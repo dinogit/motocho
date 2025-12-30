@@ -2,7 +2,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import { Page } from '@/features/sessions/page'
 import { getSessionDetails } from '@/shared/services/transcripts/server-functions'
 
-export const Route = createFileRoute('/transcripts/transcripts/$projectId/$sessionId')({
+export const Route = createFileRoute('/transcripts/$projectId/$sessionId')({
   validateSearch: (search: Record<string, unknown>) => ({
     page: Number(search.page) || 1,
   }),
