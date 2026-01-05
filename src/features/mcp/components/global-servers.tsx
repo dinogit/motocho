@@ -23,14 +23,24 @@ import {
 import { ServerCard } from './server-card'
 import type { McpServer } from '@/shared/services/mcp/types'
 
-interface GlobalServersProps {
-  servers: McpServer[]
+interface ProjectOption {
+  path: string
+  name: string
 }
 
-export function GlobalServers({ servers }: GlobalServersProps) {
+interface GlobalServersProps {
+  servers: McpServer[]
+  allProjects?: ProjectOption[]
+  onRefresh?: () => void
+}
+
+export function GlobalServers({ servers, allProjects = [], onRefresh }: GlobalServersProps) {
   if (servers.length === 0) {
     return null
   }
+
+  // Global servers are configured at home directory level
+  const homePath = '~'
 
   return (
     <Card>
@@ -50,7 +60,13 @@ export function GlobalServers({ servers }: GlobalServersProps) {
       <CardContent>
         <div className="space-y-2">
           {servers.map((server) => (
-            <ServerCard key={server.name} server={server} />
+            <ServerCard
+              key={server.name}
+              server={server}
+              projectPath={homePath}
+              allProjects={allProjects}
+              onToggle={onRefresh}
+            />
           ))}
         </div>
       </CardContent>

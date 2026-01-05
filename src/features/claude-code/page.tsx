@@ -23,7 +23,7 @@ import {
   PageHeader,
   PageHeaderContent,
   PageTitle,
-  PageDescription,
+  PageDescription, PageHeaderSeparator,
 } from '@/shared/components/page/page-header'
 
 interface Tool {
@@ -206,12 +206,11 @@ export function Page() {
     <>
       <PageHeader>
         <PageHeaderContent>
-          <div>
-            <PageTitle>Claude Code Tools</PageTitle>
-            <PageDescription>
-              Reference guide for all internal tools
-            </PageDescription>
-          </div>
+          <PageTitle>Claude Code Tools</PageTitle>
+          <PageHeaderSeparator  />
+          <PageDescription>
+            Reference guide for all internal tools
+          </PageDescription>
         </PageHeaderContent>
       </PageHeader>
       <div className="flex flex-col gap-6 p-6 max-w-6xl mx-auto w-full">

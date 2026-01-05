@@ -279,3 +279,19 @@ export const getProjectStats = createServerFn({ method: 'GET' })
       lastSession,
     }
   })
+
+/**
+ * Delete a session from disk
+ */
+export const deleteSession = createServerFn({ method: 'POST' })
+  .inputValidator((d: { projectId: string; sessionId: string }) => d)
+  .handler(async ({ data }): Promise<{ success: boolean }> => {
+    const filePath = path.join(CLAUDE_PROJECTS_DIR, data.projectId, `${data.sessionId}.jsonl`)
+
+    try {
+      await fs.promises.unlink(filePath)
+      return { success: true }
+    } catch {
+      return { success: false }
+    }
+  })

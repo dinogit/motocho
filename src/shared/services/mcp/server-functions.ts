@@ -136,6 +136,22 @@ async function readPluginConfig(pluginId: string): Promise<Record<string, McpSer
   }
 }
 
+/**
+ * Read project-level .mcp.json file
+ * Projects can have their own .mcp.json with server configurations
+ */
+async function readProjectMcpJson(projectPath: string): Promise<Record<string, McpServerConfig> | null> {
+  try {
+    const configPath = path.join(projectPath, '.mcp.json')
+    const content = await fs.promises.readFile(configPath, 'utf-8')
+    const parsed = JSON.parse(content)
+    // .mcp.json has structure: { mcpServers: { ... } }
+    return parsed.mcpServers || null
+  } catch {
+    return null
+  }
+}
+
 // ============================================================================
 // Server Functions (exposed to client)
 // ============================================================================
@@ -156,6 +172,9 @@ export const getMcpData = createServerFn({ method: 'GET' }).handler(
     // Track which servers are used across projects
     const serverUsage = new Map<string, string[]>()
 
+    // Collect ALL projects for destination dropdown
+    const allProjects: Array<{ path: string; name: string }> = []
+
     // ========================================================================
     // Parse per-project MCP configurations
     // ========================================================================
@@ -170,20 +189,48 @@ export const getMcpData = createServerFn({ method: 'GET' }).handler(
       }>
 
       for (const [projectPath, projectConfig] of Object.entries(projectsConfig)) {
-        // Skip if no MCP servers configured
-        if (!projectConfig.mcpServers || Object.keys(projectConfig.mcpServers).length === 0) {
-          continue
+        // Skip home directory for allProjects
+        if (projectPath !== os.homedir()) {
+          allProjects.push({ path: projectPath, name: getProjectName(projectPath) })
         }
 
         const servers: McpServer[] = []
+        const disabledServers = projectConfig.disabledMcpjsonServers || []
 
-        for (const [serverName, serverConfig] of Object.entries(projectConfig.mcpServers)) {
-          servers.push(parseServerConfig(serverName, serverConfig))
+        // Add servers from ~/.claude.json mcpServers
+        if (projectConfig.mcpServers) {
+          for (const [serverName, serverConfig] of Object.entries(projectConfig.mcpServers)) {
+            servers.push(parseServerConfig(serverName, serverConfig))
 
-          // Track server usage
-          const existing = serverUsage.get(serverName) || []
-          existing.push(projectPath)
-          serverUsage.set(serverName, existing)
+            // Track server usage
+            const existing = serverUsage.get(serverName) || []
+            existing.push(projectPath)
+            serverUsage.set(serverName, existing)
+          }
+        }
+
+        // Also read from project's .mcp.json file
+        const projectMcpJson = await readProjectMcpJson(projectPath)
+        if (projectMcpJson) {
+          for (const [serverName, serverConfig] of Object.entries(projectMcpJson)) {
+            // Skip if already added from ~/.claude.json
+            if (servers.some(s => s.name === serverName)) continue
+
+            const server = parseServerConfig(serverName, serverConfig)
+            server.fromMcpJson = true
+            server.disabled = disabledServers.includes(serverName)
+            servers.push(server)
+
+            // Track server usage
+            const existing = serverUsage.get(serverName) || []
+            existing.push(projectPath)
+            serverUsage.set(serverName, existing)
+          }
+        }
+
+        // Skip if no MCP servers configured (for main list)
+        if (servers.length === 0) {
+          continue
         }
 
         projects.push({
@@ -192,10 +239,13 @@ export const getMcpData = createServerFn({ method: 'GET' }).handler(
           servers,
           contextUris: projectConfig.mcpContextUris || [],
           enabledServers: projectConfig.enabledMcpjsonServers || [],
-          disabledServers: projectConfig.disabledMcpjsonServers || [],
+          disabledServers,
         })
       }
     }
+
+    // Sort allProjects
+    allProjects.sort((a, b) => a.name.localeCompare(b.name))
 
     // ========================================================================
     // Parse global MCP servers (configured at home directory level)
@@ -261,6 +311,7 @@ export const getMcpData = createServerFn({ method: 'GET' }).handler(
 
     return {
       projects,
+      allProjects,
       plugins,
       globalServers,
       stats,
@@ -298,3 +349,204 @@ export const checkServerStatus = createServerFn({ method: 'GET' })
       }
     }
   })
+
+// ============================================================================
+// Write Functions (modify ~/.claude.json)
+// ============================================================================
+
+/**
+ * Helper to read and write Claude config safely
+ */
+async function writeClaudeConfig(config: Record<string, unknown>): Promise<void> {
+  await fs.promises.writeFile(CLAUDE_CONFIG_PATH, JSON.stringify(config, null, 2), 'utf-8')
+}
+
+/**
+ * Toggle an MCP server enabled/disabled for a project
+ *
+ * Uses disabledMcpjsonServers array in ~/.claude.json
+ */
+export const toggleMcpServer = createServerFn({ method: 'POST' })
+  .inputValidator((d: { projectPath: string; serverName: string; enabled: boolean }) => d)
+  .handler(async ({ data }): Promise<{ success: boolean; error?: string }> => {
+    const { projectPath, serverName, enabled } = data
+
+    try {
+      const config = await readClaudeConfig()
+      if (!config) {
+        return { success: false, error: 'Could not read Claude config' }
+      }
+
+      // Ensure projects structure exists
+      if (!config.projects || typeof config.projects !== 'object') {
+        return { success: false, error: 'No projects in config' }
+      }
+
+      const projects = config.projects as Record<string, Record<string, unknown>>
+      if (!projects[projectPath]) {
+        return { success: false, error: 'Project not found in config' }
+      }
+
+      const projectConfig = projects[projectPath]
+      const disabledServers = (projectConfig.disabledMcpjsonServers as string[]) || []
+
+      if (enabled) {
+        // Remove from disabled list
+        projectConfig.disabledMcpjsonServers = disabledServers.filter(s => s !== serverName)
+      } else {
+        // Add to disabled list
+        if (!disabledServers.includes(serverName)) {
+          projectConfig.disabledMcpjsonServers = [...disabledServers, serverName]
+        }
+      }
+
+      await writeClaudeConfig(config)
+      return { success: true }
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to toggle server',
+      }
+    }
+  })
+
+/**
+ * Add a new MCP server to a project
+ */
+export const addMcpServer = createServerFn({ method: 'POST' })
+  .inputValidator((d: {
+    projectPath: string
+    serverName: string
+    serverConfig: McpServerConfig
+  }) => d)
+  .handler(async ({ data }): Promise<{ success: boolean; error?: string }> => {
+    const { projectPath, serverName, serverConfig } = data
+
+    try {
+      const config = await readClaudeConfig()
+      if (!config) {
+        return { success: false, error: 'Could not read Claude config' }
+      }
+
+      // Ensure projects structure exists
+      if (!config.projects || typeof config.projects !== 'object') {
+        config.projects = {}
+      }
+
+      const projects = config.projects as Record<string, Record<string, unknown>>
+      if (!projects[projectPath]) {
+        projects[projectPath] = {}
+      }
+
+      const projectConfig = projects[projectPath]
+      if (!projectConfig.mcpServers || typeof projectConfig.mcpServers !== 'object') {
+        projectConfig.mcpServers = {}
+      }
+
+      const mcpServers = projectConfig.mcpServers as Record<string, McpServerConfig>
+
+      // Check if server already exists
+      if (mcpServers[serverName]) {
+        return { success: false, error: `Server "${serverName}" already exists` }
+      }
+
+      // Add the server
+      mcpServers[serverName] = serverConfig
+
+      await writeClaudeConfig(config)
+      return { success: true }
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to add server',
+      }
+    }
+  })
+
+/**
+ * Copy an MCP server configuration to another project
+ */
+export const copyMcpToProject = createServerFn({ method: 'POST' })
+  .inputValidator((d: {
+    sourceProject: string
+    serverName: string
+    destinationProject: string
+  }) => d)
+  .handler(async ({ data }): Promise<{ success: boolean; error?: string }> => {
+    const { sourceProject, serverName, destinationProject } = data
+
+    try {
+      const config = await readClaudeConfig()
+      if (!config) {
+        return { success: false, error: 'Could not read Claude config' }
+      }
+
+      const projects = config.projects as Record<string, Record<string, unknown>>
+      if (!projects) {
+        return { success: false, error: 'No projects in config' }
+      }
+
+      // Get source server config
+      const sourceConfig = projects[sourceProject]
+      if (!sourceConfig?.mcpServers) {
+        return { success: false, error: 'Source project has no MCP servers' }
+      }
+
+      const sourceMcpServers = sourceConfig.mcpServers as Record<string, McpServerConfig>
+      const serverToCopy = sourceMcpServers[serverName]
+      if (!serverToCopy) {
+        return { success: false, error: `Server "${serverName}" not found in source project` }
+      }
+
+      // Ensure destination project exists
+      if (!projects[destinationProject]) {
+        projects[destinationProject] = {}
+      }
+
+      const destConfig = projects[destinationProject]
+      if (!destConfig.mcpServers || typeof destConfig.mcpServers !== 'object') {
+        destConfig.mcpServers = {}
+      }
+
+      const destMcpServers = destConfig.mcpServers as Record<string, McpServerConfig>
+
+      // Check if server already exists at destination
+      if (destMcpServers[serverName]) {
+        return { success: false, error: `Server "${serverName}" already exists in destination` }
+      }
+
+      // Copy the server config
+      destMcpServers[serverName] = { ...serverToCopy }
+
+      await writeClaudeConfig(config)
+      return { success: true }
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to copy server',
+      }
+    }
+  })
+
+/**
+ * Get all projects for destination dropdown
+ */
+export const getAllProjects = createServerFn({ method: 'GET' }).handler(
+  async (): Promise<Array<{ path: string; name: string }>> => {
+    const config = await readClaudeConfig()
+    const allProjects: Array<{ path: string; name: string }> = []
+
+    if (config?.projects && typeof config.projects === 'object') {
+      for (const projectPath of Object.keys(config.projects)) {
+        // Skip home directory
+        if (projectPath === os.homedir()) continue
+        allProjects.push({
+          path: projectPath,
+          name: getProjectName(projectPath),
+        })
+      }
+    }
+
+    return allProjects.sort((a, b) => a.name.localeCompare(b.name))
+  }
+)

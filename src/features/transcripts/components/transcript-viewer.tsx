@@ -1,5 +1,6 @@
+import { useState } from 'react'
 import { MessageBlock } from './message-block'
-import { MessageSquare, Terminal, FileCode, DollarSign } from 'lucide-react'
+import { MessageSquare, Terminal, FileCode, DollarSign, Trash2, Loader2 } from 'lucide-react'
 import {
   Pagination,
   PaginationContent,
@@ -10,6 +11,18 @@ import {
   PaginationEllipsis,
 } from '@/shared/components/ui/pagination'
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card'
+import { Button } from '@/shared/components/ui/button'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/shared/components/ui/alert-dialog'
 import { ScrollArea } from '@/shared/components/ui/scroll-area'
 import type { Session, PaginatedMessages } from '@/shared/services/transcripts/types'
 
@@ -18,6 +31,7 @@ interface TranscriptViewerProps {
   pagination: PaginatedMessages
   onPageChange: (page: number) => void
   onAsk?: (content: string, toolName: string, type: 'tool_use' | 'tool_result' | 'text') => void
+  onDelete?: () => Promise<void>
 }
 
 export function TranscriptViewer({
@@ -25,15 +39,45 @@ export function TranscriptViewer({
   pagination,
   onPageChange,
   onAsk,
+  onDelete,
 }: TranscriptViewerProps) {
   const { messages, currentPage, totalPages } = pagination
   const stats = session.stats
+  const [isDeleting, setIsDeleting] = useState(false)
+
+  const handleDelete = async () => {
+    if (!onDelete) return
+    setIsDeleting(true)
+    await onDelete()
+    setIsDeleting(false)
+  }
 
   return (
     <div className="flex flex-col h-full">
       <Card className="mb-4">
-        <CardHeader className="pb-2">
+        <CardHeader className="pb-2 flex flex-row items-start justify-between space-y-0">
           <CardTitle className="text-lg">{session.summary}</CardTitle>
+          {onDelete && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" disabled={isDeleting}>
+                  {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete session?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will permanently delete this session from disk. This cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleDelete}>Delete</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
         </CardHeader>
         <CardContent className="space-y-3">
           {/* Stats row - like simonw's format */}

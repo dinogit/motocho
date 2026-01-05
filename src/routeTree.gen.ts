@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SkillsRouteImport } from './routes/skills'
 import { Route as McpRouteImport } from './routes/mcp'
 import { Route as HistoryRouteImport } from './routes/history'
 import { Route as ClaudeCodeRouteImport } from './routes/claude-code'
@@ -24,6 +25,11 @@ import { Route as FilesSessionIdIndexRouteImport } from './routes/files/$session
 import { Route as TranscriptsProjectIdSessionIdRouteImport } from './routes/transcripts/$projectId/$sessionId'
 import { Route as FilesSessionIdFileHashRouteImport } from './routes/files/$sessionId/$fileHash'
 
+const SkillsRoute = SkillsRouteImport.update({
+  id: '/skills',
+  path: '/skills',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const McpRoute = McpRouteImport.update({
   id: '/mcp',
   path: '/mcp',
@@ -103,6 +109,7 @@ export interface FileRoutesByFullPath {
   '/claude-code': typeof ClaudeCodeRoute
   '/history': typeof HistoryRoute
   '/mcp': typeof McpRoute
+  '/skills': typeof SkillsRoute
   '/api/chat': typeof ApiChatRoute
   '/plans/$planId': typeof PlansPlanIdRoute
   '/files': typeof FilesIndexRoute
@@ -119,6 +126,7 @@ export interface FileRoutesByTo {
   '/claude-code': typeof ClaudeCodeRoute
   '/history': typeof HistoryRoute
   '/mcp': typeof McpRoute
+  '/skills': typeof SkillsRoute
   '/api/chat': typeof ApiChatRoute
   '/plans/$planId': typeof PlansPlanIdRoute
   '/files': typeof FilesIndexRoute
@@ -136,6 +144,7 @@ export interface FileRoutesById {
   '/claude-code': typeof ClaudeCodeRoute
   '/history': typeof HistoryRoute
   '/mcp': typeof McpRoute
+  '/skills': typeof SkillsRoute
   '/api/chat': typeof ApiChatRoute
   '/plans/$planId': typeof PlansPlanIdRoute
   '/files/': typeof FilesIndexRoute
@@ -154,6 +163,7 @@ export interface FileRouteTypes {
     | '/claude-code'
     | '/history'
     | '/mcp'
+    | '/skills'
     | '/api/chat'
     | '/plans/$planId'
     | '/files'
@@ -170,6 +180,7 @@ export interface FileRouteTypes {
     | '/claude-code'
     | '/history'
     | '/mcp'
+    | '/skills'
     | '/api/chat'
     | '/plans/$planId'
     | '/files'
@@ -186,6 +197,7 @@ export interface FileRouteTypes {
     | '/claude-code'
     | '/history'
     | '/mcp'
+    | '/skills'
     | '/api/chat'
     | '/plans/$planId'
     | '/files/'
@@ -203,6 +215,7 @@ export interface RootRouteChildren {
   ClaudeCodeRoute: typeof ClaudeCodeRoute
   HistoryRoute: typeof HistoryRoute
   McpRoute: typeof McpRoute
+  SkillsRoute: typeof SkillsRoute
   ApiChatRoute: typeof ApiChatRoute
   PlansPlanIdRoute: typeof PlansPlanIdRoute
   FilesIndexRoute: typeof FilesIndexRoute
@@ -216,6 +229,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/skills': {
+      id: '/skills'
+      path: '/skills'
+      fullPath: '/skills'
+      preLoaderRoute: typeof SkillsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/mcp': {
       id: '/mcp'
       path: '/mcp'
@@ -323,6 +343,7 @@ const rootRouteChildren: RootRouteChildren = {
   ClaudeCodeRoute: ClaudeCodeRoute,
   HistoryRoute: HistoryRoute,
   McpRoute: McpRoute,
+  SkillsRoute: SkillsRoute,
   ApiChatRoute: ApiChatRoute,
   PlansPlanIdRoute: PlansPlanIdRoute,
   FilesIndexRoute: FilesIndexRoute,

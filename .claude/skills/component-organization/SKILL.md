@@ -1,6 +1,10 @@
-# Component Organization Skill
+---
+name: component-organization
+description: Enforces single-component-per-file pattern for React feature pages. Use when creating new pages, refactoring page.tsx files, or when components are mixed in a single file.
+---
 
-## Rule
+# Component Organization
+
 When creating React components for a feature page, **never** put multiple component functions in a single `page.tsx` file.
 
 ## Pattern
@@ -8,13 +12,13 @@ When creating React components for a feature page, **never** put multiple compon
 ### Instead of this (BAD):
 ```
 features/analytics/
-  page.tsx  ← Contains Page + SummaryCard + DailyActivityChart + etc.
+  page.tsx  <- Contains Page + SummaryCard + DailyActivityChart + etc.
 ```
 
 ### Do this (GOOD):
 ```
 features/analytics/
-  page.tsx           ← Only imports and composes components
+  page.tsx           <- Only imports and composes components
   components/
     summary-card.tsx
     daily-activity-chart.tsx
@@ -61,7 +65,6 @@ export function SummaryCard({ title, value, icon }: SummaryCardProps) {
 
 ## When to Apply
 
-Apply this rule when:
 - Creating a new feature page with 2+ custom components
 - Refactoring an existing page with inline components
 - The page.tsx file exceeds ~100 lines

@@ -15,11 +15,11 @@ import {
   FlipVertical2,
   Wrench,
   Search,
-  Shapes,
   Plug,
   FolderOpen,
   FileText,
   FileClock,
+  Sparkles, Workflow,
 } from "lucide-react"
 
 import { NavMain, type NavItem } from "@/shared/components/navigation/nav-main"
@@ -71,6 +71,11 @@ const staticNavItems: NavItem[] = [
     url: "/mcp",
     icon: Plug,
   },
+  {
+    title: "Skills",
+    url: "/skills",
+    icon: Sparkles,
+  },
 ]
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
@@ -120,8 +125,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               className="data-[slot=sidebar-menu-button]:!p-1.5"
             >
               <a href="/">
-                <Shapes className="!size-5" />
-                <span className="text-base font-semibold">CC Dashboard</span>
+                <Workflow className="!size-5" />
+                <span className="text-base font-semibold">CC Workflow</span>
               </a>
             </SidebarMenuButton>
           </SidebarMenuItem>

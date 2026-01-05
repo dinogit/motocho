@@ -22,6 +22,10 @@
 interface McpServerBase {
   /** Human-readable name (derived from config key) */
   name: string
+  /** Whether this server comes from project .mcp.json file */
+  fromMcpJson?: boolean
+  /** Whether this server is disabled */
+  disabled?: boolean
 }
 
 /**
@@ -160,11 +164,21 @@ export interface McpToolCall {
 // ============================================================================
 
 /**
+ * Simple project reference for destination dropdown
+ */
+export interface ProjectRef {
+  path: string
+  name: string
+}
+
+/**
  * Complete MCP data for the dashboard
  */
 export interface McpDashboardData {
   /** All project MCP configurations */
   projects: ProjectMcpConfig[]
+  /** ALL projects from ~/.claude.json (for copy/add destination) */
+  allProjects: ProjectRef[]
   /** Available marketplace plugins */
   plugins: McpPlugin[]
   /** Global MCP servers (configured at ~ level) */

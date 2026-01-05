@@ -29,13 +29,27 @@ import { ChevronDown } from 'lucide-react'
 import { ServerCard } from './server-card'
 import type { ProjectMcpConfig } from '@/shared/services/mcp/types'
 
-interface ProjectSectionProps {
-  project: ProjectMcpConfig
-  /** Whether to start expanded */
-  defaultOpen?: boolean
+interface ProjectOption {
+  path: string
+  name: string
 }
 
-export function ProjectSection({ project, defaultOpen = true }: ProjectSectionProps) {
+interface ProjectSectionProps {
+  project: ProjectMcpConfig
+  /** All projects for copy dropdown */
+  allProjects?: ProjectOption[]
+  /** Whether to start expanded */
+  defaultOpen?: boolean
+  /** Callback when server state changes */
+  onRefresh?: () => void
+}
+
+export function ProjectSection({
+  project,
+  allProjects = [],
+  defaultOpen = true,
+  onRefresh,
+}: ProjectSectionProps) {
   return (
     <Collapsible defaultOpen={defaultOpen}>
       <Card>
@@ -67,7 +81,14 @@ export function ProjectSection({ project, defaultOpen = true }: ProjectSectionPr
             {/* Server list */}
             <div className="space-y-2">
               {project.servers.map((server) => (
-                <ServerCard key={server.name} server={server} />
+                <ServerCard
+                  key={server.name}
+                  server={server}
+                  projectPath={project.projectPath}
+                  isDisabled={project.disabledServers.includes(server.name)}
+                  allProjects={allProjects}
+                  onToggle={onRefresh}
+                />
               ))}
             </div>
 

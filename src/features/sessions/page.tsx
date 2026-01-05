@@ -7,8 +7,9 @@ import {
   PageHeader,
   PageHeaderContent,
   PageTitle,
-  PageDescription,
+  PageDescription, PageHeaderSeparator,
 } from '@/shared/components/page/page-header'
+import { deleteSession } from '@/shared/services/transcripts/server-functions'
 
 export function Page() {
   const data = Route.useLoaderData()
@@ -18,6 +19,13 @@ export function Page() {
   // Chat drawer state
   const [chatOpen, setChatOpen] = useState(false)
   const [chatContext, setChatContext] = useState<ChatContext | null>(null)
+
+  const handleDelete = async () => {
+    const result = await deleteSession({ data: { projectId, sessionId } })
+    if (result.success) {
+      navigate({ to: '/transcripts/$projectId', params: { projectId } })
+    }
+  }
 
   const handlePageChange = (page: number) => {
     navigate({
@@ -37,12 +45,11 @@ export function Page() {
     <>
       <PageHeader>
         <PageHeaderContent>
-          <div>
-            <PageTitle>Session Transcript</PageTitle>
-            <PageDescription>
-              {data.session.summary || 'Conversation transcript'}
-            </PageDescription>
-          </div>
+          <PageTitle>Session Transcript</PageTitle>
+          <PageHeaderSeparator />
+          <PageDescription>
+            {data.session.summary || 'Conversation transcript'}
+          </PageDescription>
         </PageHeaderContent>
       </PageHeader>
       <div className="flex flex-col gap-4 p-6">
@@ -51,6 +58,7 @@ export function Page() {
           pagination={data.pagination}
           onPageChange={handlePageChange}
           onAsk={handleAsk}
+          onDelete={handleDelete}
         />
       </div>
 

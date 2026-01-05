@@ -38,7 +38,6 @@ function PageHeader({ className, children, ...props }: React.ComponentProps<"div
             {...props}
         >
             {children}
-            <UsageIndicator />
         </div>
     )
 }

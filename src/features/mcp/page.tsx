@@ -8,28 +8,34 @@ import { StatsCards } from './components/stats-cards'
 import { GlobalServers } from './components/global-servers'
 import { ProjectSection } from './components/project-section'
 import { PluginCard } from './components/plugin-card'
+import { AddServerDialog } from './components/add-server-dialog'
 import type { McpDashboardData } from '@/shared/services/mcp/types'
 import {
   PageHeader,
   PageHeaderContent,
   PageTitle,
-  PageDescription,
+  PageDescription, PageHeaderSeparator,
 } from '@/shared/components/page/page-header'
 
 export function Page() {
   const data = useLoaderData({ from: '/mcp' }) as McpDashboardData
+  const allProjects = data.allProjects
+
+  function handleRefresh() {
+    window.location.reload()
+  }
 
   return (
     <>
       <PageHeader>
         <PageHeaderContent>
-          <div>
-            <PageTitle>MCP Servers</PageTitle>
-            <PageDescription>
-              Model Context Protocol servers and integrations
-            </PageDescription>
-          </div>
+          <PageTitle>MCP Servers</PageTitle>
+          <PageHeaderSeparator />
+          <PageDescription>
+            Model Context Protocol servers and integrations
+          </PageDescription>
         </PageHeaderContent>
+        <AddServerDialog allProjects={allProjects} onSuccess={handleRefresh} />
       </PageHeader>
       <div className="flex flex-col gap-6 p-6">
         {/* Statistics overview */}
@@ -66,7 +72,9 @@ export function Page() {
                   <ProjectSection
                     key={project.projectPath}
                     project={project}
+                    allProjects={allProjects}
                     defaultOpen={data.projects.length <= 3}
+                    onRefresh={handleRefresh}
                   />
                 ))}
               </div>
@@ -120,7 +128,11 @@ export function Page() {
           {/* Global servers tab */}
           {data.globalServers.length > 0 && (
             <TabsContent value="global" className="mt-4">
-              <GlobalServers servers={data.globalServers} />
+              <GlobalServers
+                servers={data.globalServers}
+                allProjects={allProjects}
+                onRefresh={handleRefresh}
+              />
             </TabsContent>
           )}
         </Tabs>
