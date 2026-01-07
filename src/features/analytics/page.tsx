@@ -9,10 +9,10 @@ import { TokensChart } from './components/tokens-chart'
 import { ModelUsageCard } from './components/model-usage-card'
 import { CostSavingsCard } from './components/cost-savings-card'
 import {
-  PageHeader,
-  PageHeaderContent,
-  PageTitle,
-  PageDescription,
+    PageHeader,
+    PageHeaderContent,
+    PageTitle,
+    PageDescription, PageHeaderSeparator,
 } from '@/shared/components/page/page-header'
 
 export function Page() {
@@ -47,12 +47,11 @@ export function Page() {
     <>
       <PageHeader>
         <PageHeaderContent>
-          <div>
             <PageTitle>Analytics</PageTitle>
+            <PageHeaderSeparator  />
             <PageDescription>
-              Your Claude Code usage since {new Date(summary.firstSessionDate).toLocaleDateString()}
+                Your Claude Code usage since {new Date(summary.firstSessionDate).toLocaleDateString()}
             </PageDescription>
-          </div>
         </PageHeaderContent>
       </PageHeader>
       <div className="flex flex-1 flex-col gap-6 p-6">

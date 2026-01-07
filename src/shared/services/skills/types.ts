@@ -25,6 +25,8 @@ export interface Skill {
   content: string
   /** Path to the skill directory */
   path: string
+  /** Whether this skill is currently enabled */
+  enabled: boolean
 }
 
 // ============================================================================

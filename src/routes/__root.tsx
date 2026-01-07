@@ -9,6 +9,7 @@ import {
 import globalCss from "@/shared/styles/globals.css?url";
 import { SidebarInset, SidebarProvider } from '@/shared/components/ui/sidebar'
 import { AppSidebar } from '@/shared/components/navigation/app-sidebar'
+import {ThemeProvider} from "@/shared/components/effects/theme-provider.tsx";
 
 export const Route = createRootRoute({
     head: () => ({
@@ -21,7 +22,7 @@ export const Route = createRootRoute({
                 content: 'width=device-width, initial-scale=1',
             },
             {
-                title: 'Claude Code Dashboard',
+                title: 'Claude Code UI',
             },
         ],
         links: [
@@ -45,10 +46,12 @@ function RootComponent() {
                     } as React.CSSProperties
                 }
             >
-                <AppSidebar variant="inset" />
-                <SidebarInset>
-                    <Outlet />
-                </SidebarInset>
+                <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
+                    <AppSidebar variant="inset" />
+                    <SidebarInset>
+                        <Outlet />
+                    </SidebarInset>
+                </ThemeProvider>
             </SidebarProvider>
 
         </RootDocument>

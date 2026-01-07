@@ -5,7 +5,7 @@ import {
   PageHeader,
   PageHeaderContent,
   PageTitle,
-  PageDescription,
+  PageDescription, PageHeaderSeparator,
 } from '@/shared/components/page/page-header'
 import { Card, CardContent } from '@/shared/components/ui/card'
 import { Badge } from '@/shared/components/ui/badge'
@@ -31,7 +31,7 @@ function formatRelativeTime(date: Date): string {
 function StatsCards({ stats }: { stats: { totalFiles: number; totalChanges: number; totalLinesWritten: number; sessionCount: number } }) {
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-      <Card className="py-4">
+      <Card className="p-4">
         <CardContent className="p-0">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-blue-100 rounded-lg">
@@ -44,7 +44,7 @@ function StatsCards({ stats }: { stats: { totalFiles: number; totalChanges: numb
           </div>
         </CardContent>
       </Card>
-      <Card className="py-4">
+      <Card className="p-4">
         <CardContent className="p-0">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-green-100 rounded-lg">
@@ -57,7 +57,7 @@ function StatsCards({ stats }: { stats: { totalFiles: number; totalChanges: numb
           </div>
         </CardContent>
       </Card>
-      <Card className="py-4">
+      <Card className="p-4">
         <CardContent className="p-0">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-purple-100 rounded-lg">
@@ -70,7 +70,7 @@ function StatsCards({ stats }: { stats: { totalFiles: number; totalChanges: numb
           </div>
         </CardContent>
       </Card>
-      <Card className="py-4">
+      <Card className="p-4">
         <CardContent className="p-0">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-orange-100 rounded-lg">
@@ -116,7 +116,7 @@ function SessionList({ sessions }: { sessions: SessionFileChanges[] }) {
               params={{ sessionId: session.sessionId }}
               className="block"
             >
-              <Card className="py-4 hover:bg-accent/50 transition-colors cursor-pointer">
+              <Card className="p-4 hover:bg-accent/50 transition-colors cursor-pointer">
                 <CardContent className="p-0">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1 min-w-0">
@@ -221,12 +221,11 @@ export function Page() {
     <>
       <PageHeader>
         <PageHeaderContent>
-          <div>
-            <PageTitle>File History</PageTitle>
-            <PageDescription>
-              Browse file changes across all Claude Code sessions
-            </PageDescription>
-          </div>
+          <PageTitle>File History</PageTitle>
+          <PageHeaderSeparator />
+          <PageDescription>
+            Browse file changes across all Claude Code sessions
+          </PageDescription>
         </PageHeaderContent>
       </PageHeader>
       <div className="flex flex-col gap-6 p-6">

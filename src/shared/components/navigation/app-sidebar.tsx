@@ -19,13 +19,15 @@ import {
   FolderOpen,
   FileText,
   FileClock,
-  Sparkles, Workflow,
+  Sparkles,
+  Bot,
+  Settings,
 } from "lucide-react"
 
 import { NavMain, type NavItem } from "@/shared/components/navigation/nav-main"
 import {
   Sidebar,
-  SidebarContent,
+  SidebarContent, SidebarFooter,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
@@ -33,6 +35,7 @@ import {
 } from "@/shared/components/ui/sidebar"
 import { getProjects } from "@/shared/services/transcripts/server-functions"
 import type { Project } from "@/shared/services/transcripts/types"
+import {ModeToggle} from "@/shared/components/effects/mode-toggle.tsx";
 
 // Static navigation items
 const staticNavItems: NavItem[] = [
@@ -75,6 +78,11 @@ const staticNavItems: NavItem[] = [
     title: "Skills",
     url: "/skills",
     icon: Sparkles,
+  },
+  {
+    title: "Settings",
+    url: "/settings",
+    icon: Settings,
   },
 ]
 
@@ -125,8 +133,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               className="data-[slot=sidebar-menu-button]:!p-1.5"
             >
               <a href="/">
-                <Workflow className="!size-5" />
-                <span className="text-base font-semibold">CC Workflow</span>
+                <Bot className="!size-5" />
+                <span className="text-base font-semibold">Claude Code UI</span>
               </a>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -135,6 +143,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       <SidebarContent>
         <NavMain items={navItems} />
       </SidebarContent>
+      <SidebarFooter>
+          <ModeToggle />
+      </SidebarFooter>
     </Sidebar>
   )
 }

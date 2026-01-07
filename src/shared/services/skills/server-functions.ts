@@ -116,11 +116,14 @@ async function readClaudeMd(projectPath: string): Promise<string | null> {
 
 /**
  * Read all skills from a project's .claude/skills/ directory
+ * Also reads disabled skills from .claude/skills-disabled/
  */
 async function readProjectSkills(projectPath: string): Promise<Skill[]> {
   const skillsDir = path.join(projectPath, '.claude', 'skills')
+  const disabledSkillsDir = path.join(projectPath, '.claude', 'skills-disabled')
   const skills: Skill[] = []
 
+  // Read enabled skills
   try {
     const entries = await fs.promises.readdir(skillsDir, { withFileTypes: true })
 
@@ -139,6 +142,7 @@ async function readProjectSkills(projectPath: string): Promise<Skill[]> {
           description,
           content: body,
           path: skillPath,
+          enabled: true,
         })
       } catch {
         // SKILL.md doesn't exist or can't be read
@@ -146,6 +150,35 @@ async function readProjectSkills(projectPath: string): Promise<Skill[]> {
     }
   } catch {
     // .claude/skills/ doesn't exist
+  }
+
+  // Read disabled skills
+  try {
+    const entries = await fs.promises.readdir(disabledSkillsDir, { withFileTypes: true })
+
+    for (const entry of entries) {
+      if (!entry.isDirectory()) continue
+
+      const skillPath = path.join(disabledSkillsDir, entry.name)
+      const skillMdPath = path.join(skillPath, 'SKILL.md')
+
+      try {
+        const content = await fs.promises.readFile(skillMdPath, 'utf-8')
+        const { name, description, body } = parseSkillFrontmatter(content)
+
+        skills.push({
+          name: name || entry.name,
+          description,
+          content: body,
+          path: skillPath,
+          enabled: false,
+        })
+      } catch {
+        // SKILL.md doesn't exist or can't be read
+      }
+    }
+  } catch {
+    // .claude/skills-disabled/ doesn't exist
   }
 
   return skills
@@ -377,3 +410,75 @@ async function copyDir(src: string, dest: string): Promise<void> {
     }
   }
 }
+
+/**
+ * Toggle a skill's enabled/disabled state
+ *
+ * Moves the skill folder between .claude/skills/ and .claude/skills-disabled/
+ */
+export const toggleSkill = createServerFn({ method: 'POST' })
+  .inputValidator((d: { skillPath: string; enabled: boolean }) => d)
+  .handler(async ({ data }): Promise<{ success: boolean; newPath?: string; error?: string }> => {
+    const { skillPath, enabled } = data
+
+    try {
+      // Extract components from path
+      const skillName = path.basename(skillPath)
+      const claudeDir = path.dirname(path.dirname(skillPath)) // Go up from skills/skillName to .claude
+
+      // Determine source and destination directories
+      const enabledDir = path.join(claudeDir, 'skills')
+      const disabledDir = path.join(claudeDir, 'skills-disabled')
+
+      let srcPath: string
+      let destPath: string
+
+      if (enabled) {
+        // Moving from disabled to enabled
+        srcPath = path.join(disabledDir, skillName)
+        destPath = path.join(enabledDir, skillName)
+      } else {
+        // Moving from enabled to disabled
+        srcPath = path.join(enabledDir, skillName)
+        destPath = path.join(disabledDir, skillName)
+      }
+
+      // Verify source exists
+      try {
+        await fs.promises.access(srcPath)
+      } catch {
+        return { success: false, error: `Skill not found at ${srcPath}` }
+      }
+
+      // Check if destination already exists
+      try {
+        await fs.promises.access(destPath)
+        return { success: false, error: `Skill already exists at destination` }
+      } catch {
+        // Good, destination doesn't exist
+      }
+
+      // Ensure destination directory exists
+      const destDir = path.dirname(destPath)
+      await fs.promises.mkdir(destDir, { recursive: true })
+
+      // Move the skill folder
+      await fs.promises.rename(srcPath, destPath)
+
+      return { success: true, newPath: destPath }
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to toggle skill',
+      }
+    }
+  })
+
+/**
+ * Get skills for a specific project
+ */
+export const getProjectSkills = createServerFn({ method: 'GET' })
+  .inputValidator((d: { projectPath: string }) => d)
+  .handler(async ({ data }): Promise<Skill[]> => {
+    return readProjectSkills(data.projectPath)
+  })

@@ -75,8 +75,8 @@ function PageHeaderSeparator({
             className={cn("flex items-center self-stretch", className)}
             {...props}
         >
-            <div className="bg-white flex items-start justify-center h-full px-2">
-                <div className="h-full w-px bg-[#e4e7e9]" />
+            <div className="bg-background flex items-start justify-center h-full px-2">
+                <div className="h-full w-px bg-border dark:bg-border-dark" />
             </div>
         </div>
     )
@@ -87,7 +87,7 @@ function PageTitle({ className, ...props }: React.ComponentProps<"h1">) {
         <h1
             data-slot="page-title"
             className={cn(
-                "text-base font-bold uppercase tracking-[0.24px] text-[#021b24] leading-4",
+                "text-base font-bold uppercase tracking-[0.24px] leading-4",
                 className
             )}
             {...props}
@@ -100,7 +100,7 @@ function PageDescription({ className, ...props }: React.ComponentProps<"p">) {
         <p
             data-slot="page-description"
             className={cn(
-                "text-sm font-medium text-[#637278] tracking-[0.07px] leading-4",
+                "text-sm font-medium text-muted-foreground",
                 className
             )}
             {...props}

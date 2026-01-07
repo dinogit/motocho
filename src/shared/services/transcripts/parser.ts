@@ -61,6 +61,8 @@ export function parseJsonlWithStats(content: string, perPage: number = 20): Pars
   let messageCount = 0
   let toolCallCount = 0
   let totalCostUsd = 0
+  let firstTimestamp: string | null = null
+  let lastTimestamp: string | null = null
 
   const entries: RawLogEntry[] = []
 
@@ -83,6 +85,12 @@ export function parseJsonlWithStats(content: string, perPage: number = 20): Pars
       if (!entry.message) continue
 
       entries.push(entry)
+
+      // Track first and last timestamps
+      if (!firstTimestamp) {
+        firstTimestamp = entry.timestamp
+      }
+      lastTimestamp = entry.timestamp
 
       // Count stats
       if (entry.type === 'user') {
@@ -114,6 +122,14 @@ export function parseJsonlWithStats(content: string, perPage: number = 20): Pars
   // Calculate total cost from parsed messages
   const calculatedCost = messages.reduce((sum, msg) => sum + (msg.usage?.costUsd || 0), 0)
 
+  // Calculate duration from first and last message
+  let durationMs = 0
+  if (firstTimestamp && lastTimestamp) {
+    const firstDate = new Date(firstTimestamp).getTime()
+    const lastDate = new Date(lastTimestamp).getTime()
+    durationMs = Math.max(0, lastDate - firstDate)
+  }
+
   return {
     messages,
     stats: {
@@ -122,6 +138,9 @@ export function parseJsonlWithStats(content: string, perPage: number = 20): Pars
       toolCallCount,
       totalCostUsd: calculatedCost || totalCostUsd,
       totalPages,
+      durationMs,
+      startTimestamp: firstTimestamp || undefined,
+      endTimestamp: lastTimestamp || undefined,
     },
     summary: summary || generateSummary(messages),
   }

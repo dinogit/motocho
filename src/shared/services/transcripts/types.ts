@@ -37,6 +37,9 @@ export interface SessionStats {
   toolCallCount: number    // tool_use blocks
   totalCostUsd: number     // sum of costUsd
   totalPages: number       // pagination pages
+  durationMs: number       // session duration in milliseconds
+  startTimestamp?: string  // ISO 8601 timestamp of first message
+  endTimestamp?: string    // ISO 8601 timestamp of last message
 }
 
 export interface Session {

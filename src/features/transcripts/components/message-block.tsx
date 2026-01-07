@@ -72,7 +72,7 @@ export function MessageBlock({ message, onAsk }: MessageBlockProps) {
             )}
             {message.timestamp && (
               <span>
-                {new Date(message.timestamp).toLocaleTimeString()}
+                {new Date(message.timestamp).toLocaleString()}
               </span>
             )}
             {usage && (

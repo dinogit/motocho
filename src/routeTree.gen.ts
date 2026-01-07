@@ -15,9 +15,12 @@ import { Route as HistoryRouteImport } from './routes/history'
 import { Route as ClaudeCodeRouteImport } from './routes/claude-code'
 import { Route as AnalyticsRouteImport } from './routes/analytics'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as TricksAndTipsIndexRouteImport } from './routes/tricks-and-tips/index'
 import { Route as TranscriptsIndexRouteImport } from './routes/transcripts/index'
+import { Route as SettingsIndexRouteImport } from './routes/settings/index'
 import { Route as PlansIndexRouteImport } from './routes/plans/index'
 import { Route as FilesIndexRouteImport } from './routes/files/index'
+import { Route as SettingsProjectIdRouteImport } from './routes/settings/$projectId'
 import { Route as PlansPlanIdRouteImport } from './routes/plans/$planId'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
 import { Route as TranscriptsProjectIdIndexRouteImport } from './routes/transcripts/$projectId/index'
@@ -55,9 +58,19 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TricksAndTipsIndexRoute = TricksAndTipsIndexRouteImport.update({
+  id: '/tricks-and-tips/',
+  path: '/tricks-and-tips/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TranscriptsIndexRoute = TranscriptsIndexRouteImport.update({
   id: '/transcripts/',
   path: '/transcripts/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsIndexRoute = SettingsIndexRouteImport.update({
+  id: '/settings/',
+  path: '/settings/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PlansIndexRoute = PlansIndexRouteImport.update({
@@ -68,6 +81,11 @@ const PlansIndexRoute = PlansIndexRouteImport.update({
 const FilesIndexRoute = FilesIndexRouteImport.update({
   id: '/files/',
   path: '/files/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsProjectIdRoute = SettingsProjectIdRouteImport.update({
+  id: '/settings/$projectId',
+  path: '/settings/$projectId',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PlansPlanIdRoute = PlansPlanIdRouteImport.update({
@@ -112,9 +130,12 @@ export interface FileRoutesByFullPath {
   '/skills': typeof SkillsRoute
   '/api/chat': typeof ApiChatRoute
   '/plans/$planId': typeof PlansPlanIdRoute
+  '/settings/$projectId': typeof SettingsProjectIdRoute
   '/files': typeof FilesIndexRoute
   '/plans': typeof PlansIndexRoute
+  '/settings': typeof SettingsIndexRoute
   '/transcripts': typeof TranscriptsIndexRoute
+  '/tricks-and-tips': typeof TricksAndTipsIndexRoute
   '/files/$sessionId/$fileHash': typeof FilesSessionIdFileHashRoute
   '/transcripts/$projectId/$sessionId': typeof TranscriptsProjectIdSessionIdRoute
   '/files/$sessionId': typeof FilesSessionIdIndexRoute
@@ -129,9 +150,12 @@ export interface FileRoutesByTo {
   '/skills': typeof SkillsRoute
   '/api/chat': typeof ApiChatRoute
   '/plans/$planId': typeof PlansPlanIdRoute
+  '/settings/$projectId': typeof SettingsProjectIdRoute
   '/files': typeof FilesIndexRoute
   '/plans': typeof PlansIndexRoute
+  '/settings': typeof SettingsIndexRoute
   '/transcripts': typeof TranscriptsIndexRoute
+  '/tricks-and-tips': typeof TricksAndTipsIndexRoute
   '/files/$sessionId/$fileHash': typeof FilesSessionIdFileHashRoute
   '/transcripts/$projectId/$sessionId': typeof TranscriptsProjectIdSessionIdRoute
   '/files/$sessionId': typeof FilesSessionIdIndexRoute
@@ -147,9 +171,12 @@ export interface FileRoutesById {
   '/skills': typeof SkillsRoute
   '/api/chat': typeof ApiChatRoute
   '/plans/$planId': typeof PlansPlanIdRoute
+  '/settings/$projectId': typeof SettingsProjectIdRoute
   '/files/': typeof FilesIndexRoute
   '/plans/': typeof PlansIndexRoute
+  '/settings/': typeof SettingsIndexRoute
   '/transcripts/': typeof TranscriptsIndexRoute
+  '/tricks-and-tips/': typeof TricksAndTipsIndexRoute
   '/files/$sessionId/$fileHash': typeof FilesSessionIdFileHashRoute
   '/transcripts/$projectId/$sessionId': typeof TranscriptsProjectIdSessionIdRoute
   '/files/$sessionId/': typeof FilesSessionIdIndexRoute
@@ -166,9 +193,12 @@ export interface FileRouteTypes {
     | '/skills'
     | '/api/chat'
     | '/plans/$planId'
+    | '/settings/$projectId'
     | '/files'
     | '/plans'
+    | '/settings'
     | '/transcripts'
+    | '/tricks-and-tips'
     | '/files/$sessionId/$fileHash'
     | '/transcripts/$projectId/$sessionId'
     | '/files/$sessionId'
@@ -183,9 +213,12 @@ export interface FileRouteTypes {
     | '/skills'
     | '/api/chat'
     | '/plans/$planId'
+    | '/settings/$projectId'
     | '/files'
     | '/plans'
+    | '/settings'
     | '/transcripts'
+    | '/tricks-and-tips'
     | '/files/$sessionId/$fileHash'
     | '/transcripts/$projectId/$sessionId'
     | '/files/$sessionId'
@@ -200,9 +233,12 @@ export interface FileRouteTypes {
     | '/skills'
     | '/api/chat'
     | '/plans/$planId'
+    | '/settings/$projectId'
     | '/files/'
     | '/plans/'
+    | '/settings/'
     | '/transcripts/'
+    | '/tricks-and-tips/'
     | '/files/$sessionId/$fileHash'
     | '/transcripts/$projectId/$sessionId'
     | '/files/$sessionId/'
@@ -218,9 +254,12 @@ export interface RootRouteChildren {
   SkillsRoute: typeof SkillsRoute
   ApiChatRoute: typeof ApiChatRoute
   PlansPlanIdRoute: typeof PlansPlanIdRoute
+  SettingsProjectIdRoute: typeof SettingsProjectIdRoute
   FilesIndexRoute: typeof FilesIndexRoute
   PlansIndexRoute: typeof PlansIndexRoute
+  SettingsIndexRoute: typeof SettingsIndexRoute
   TranscriptsIndexRoute: typeof TranscriptsIndexRoute
+  TricksAndTipsIndexRoute: typeof TricksAndTipsIndexRoute
   FilesSessionIdFileHashRoute: typeof FilesSessionIdFileHashRoute
   TranscriptsProjectIdSessionIdRoute: typeof TranscriptsProjectIdSessionIdRoute
   FilesSessionIdIndexRoute: typeof FilesSessionIdIndexRoute
@@ -271,11 +310,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/tricks-and-tips/': {
+      id: '/tricks-and-tips/'
+      path: '/tricks-and-tips'
+      fullPath: '/tricks-and-tips'
+      preLoaderRoute: typeof TricksAndTipsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/transcripts/': {
       id: '/transcripts/'
       path: '/transcripts'
       fullPath: '/transcripts'
       preLoaderRoute: typeof TranscriptsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings/': {
+      id: '/settings/'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/plans/': {
@@ -290,6 +343,13 @@ declare module '@tanstack/react-router' {
       path: '/files'
       fullPath: '/files'
       preLoaderRoute: typeof FilesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings/$projectId': {
+      id: '/settings/$projectId'
+      path: '/settings/$projectId'
+      fullPath: '/settings/$projectId'
+      preLoaderRoute: typeof SettingsProjectIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/plans/$planId': {
@@ -346,9 +406,12 @@ const rootRouteChildren: RootRouteChildren = {
   SkillsRoute: SkillsRoute,
   ApiChatRoute: ApiChatRoute,
   PlansPlanIdRoute: PlansPlanIdRoute,
+  SettingsProjectIdRoute: SettingsProjectIdRoute,
   FilesIndexRoute: FilesIndexRoute,
   PlansIndexRoute: PlansIndexRoute,
+  SettingsIndexRoute: SettingsIndexRoute,
   TranscriptsIndexRoute: TranscriptsIndexRoute,
+  TricksAndTipsIndexRoute: TricksAndTipsIndexRoute,
   FilesSessionIdFileHashRoute: FilesSessionIdFileHashRoute,
   TranscriptsProjectIdSessionIdRoute: TranscriptsProjectIdSessionIdRoute,
   FilesSessionIdIndexRoute: FilesSessionIdIndexRoute,

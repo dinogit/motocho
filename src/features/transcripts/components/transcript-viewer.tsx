@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { MessageBlock } from './message-block'
-import { MessageSquare, Terminal, FileCode, DollarSign, Trash2, Loader2 } from 'lucide-react'
+import {MessageSquare, Terminal, FileCode, DollarSign, Trash2, Loader2, Clock, CalendarDays} from 'lucide-react'
 import {
   Pagination,
   PaginationContent,
@@ -32,6 +32,23 @@ interface TranscriptViewerProps {
   onPageChange: (page: number) => void
   onAsk?: (content: string, toolName: string, type: 'tool_use' | 'tool_result' | 'text') => void
   onDelete?: () => Promise<void>
+}
+
+/**
+ * Format duration in milliseconds to human-readable format (e.g., "2h 45m 30s")
+ */
+function formatDuration(durationMs: number): string {
+  const totalSeconds = Math.floor(durationMs / 1000)
+  const hours = Math.floor(totalSeconds / 3600)
+  const minutes = Math.floor((totalSeconds % 3600) / 60)
+  const seconds = totalSeconds % 60
+
+  const parts = []
+  if (hours > 0) parts.push(`${hours}h`)
+  if (minutes > 0) parts.push(`${minutes}m`)
+  if (seconds > 0 || parts.length === 0) parts.push(`${seconds}s`)
+
+  return parts.join(' ')
 }
 
 export function TranscriptViewer({
@@ -108,14 +125,33 @@ export function TranscriptViewer({
                   </span>
                 </>
               )}
+              {stats.durationMs > 0 && (
+                <>
+                  <span>·</span>
+                  <span className="flex items-center gap-1.5">
+                    <Clock className="h-4 w-4" />
+                    {formatDuration(stats.durationMs)}
+                  </span>
+                </>
+              )}
+            </div>
+          )}
+          {/* Session timing row */}
+          {stats && stats.startTimestamp && stats.endTimestamp && (
+            <div className="text-xs text-muted-foreground flex flex-row gap-2">
+              <div className="flex items-center gap-1">
+                <CalendarDays className="h-4 w-4" />
+                Start: {new Date(stats.startTimestamp).toLocaleString()}
+              </div>
+              <span> - </span>
+              <div className="flex items-center gap-1">
+                <CalendarDays className="h-4 w-4" />
+                End: {new Date(stats.endTimestamp).toLocaleString()}
+              </div>
             </div>
           )}
           {/* Metadata row */}
           <div className="flex items-center gap-4 text-xs text-muted-foreground">
-            <span>
-              {new Date(session.lastModified).toLocaleDateString()} at{' '}
-              {new Date(session.lastModified).toLocaleTimeString()}
-            </span>
             <span className="font-mono">{session.id.slice(0, 12)}</span>
             <span className="ml-auto">
               Page {currentPage} of {totalPages}
