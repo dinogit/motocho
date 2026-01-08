@@ -4,7 +4,7 @@ import { SearchInput } from './components/search-input'
 import { ProjectFilter } from './components/project-filter'
 import { SearchResultItem } from './components/search-result-item'
 import { StatsBar } from './components/stats-bar'
-import { searchHistory } from '@/shared/services/history/server-functions'
+import { searchHistory } from '@/shared/services/history/client'
 import type { SearchResult } from '@/shared/services/history/types'
 import {
   PageHeader,

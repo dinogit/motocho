@@ -14,7 +14,7 @@
 
 import { createFileRoute } from '@tanstack/react-router'
 import { Page } from '@/features/skills/page'
-import { getSkillsData } from '@/shared/services/skills/server-functions'
+import { getSkillsData } from '@/shared/services/skills/client'
 
 export const Route = createFileRoute('/skills')({
   loader: () => getSkillsData(),

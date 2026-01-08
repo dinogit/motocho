@@ -27,7 +27,7 @@ import {
   DropdownMenuTrigger,
 } from '@/shared/components/ui/dropdown-menu'
 import { Status, StatusIndicator, StatusLabel } from '@/shared/components/ui/status'
-import { checkServerStatus, toggleMcpServer, copyMcpToProject } from '@/shared/services/mcp/server-functions'
+import { checkServerStatus, toggleMcpServer, copyMcpToProject } from '@/shared/services/mcp/client'
 import type { McpServer } from '@/shared/services/mcp/types'
 
 interface ProjectOption {

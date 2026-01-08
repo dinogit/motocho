@@ -1,8 +1,8 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { DetailPage } from '@/features/settings/detail-page.tsx'
-import { getSettingsData } from '@/shared/services/settings/server-functions'
-import { getSkillsData } from '@/shared/services/skills/server-functions'
-import { getMcpData } from '@/shared/services/mcp/server-functions'
+import { getSettingsData } from '@/shared/services/settings/client'
+import { getSkillsData } from '@/shared/services/skills/client'
+import { getMcpData } from '@/shared/services/mcp/client'
 
 export const Route = createFileRoute('/settings/$projectId')({
   loader: async ({ params }) => {

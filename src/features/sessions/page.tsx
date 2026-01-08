@@ -9,7 +9,7 @@ import {
   PageTitle,
   PageDescription, PageHeaderSeparator,
 } from '@/shared/components/page/page-header'
-import { deleteSession } from '@/shared/services/transcripts/server-functions'
+import { deleteSession } from '@/shared/services/transcripts/client'
 
 export function Page() {
   const data = Route.useLoaderData()

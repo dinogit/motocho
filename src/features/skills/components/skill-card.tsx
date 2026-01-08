@@ -41,7 +41,7 @@ import {
 import { Button } from '@/shared/components/ui/button'
 import { Checkbox } from '@/shared/components/ui/checkbox'
 import type { Skill } from '@/shared/services/skills/types'
-import { copySkill, deleteSkill } from '@/shared/services/skills/server-functions'
+import { copySkill, deleteSkill } from '@/shared/services/skills/client'
 import { MarkdownViewer } from './markdown-viewer'
 
 interface ProjectOption {

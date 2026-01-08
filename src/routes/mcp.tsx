@@ -13,7 +13,7 @@
 
 import { createFileRoute } from '@tanstack/react-router'
 import { Page } from '@/features/mcp/page'
-import { getMcpData } from '@/shared/services/mcp/server-functions'
+import { getMcpData } from '@/shared/services/mcp/client'
 
 export const Route = createFileRoute('/mcp')({
   // Loader runs on server - reads Claude config files

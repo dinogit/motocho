@@ -27,7 +27,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/shared/components/ui/select'
-import { addMcpServer } from '@/shared/services/mcp/server-functions'
+import { addMcpServer } from '@/shared/services/mcp/client'
 import type { McpServerConfig } from '@/shared/services/mcp/types'
 
 interface ProjectOption {

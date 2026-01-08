@@ -4,7 +4,7 @@ import {
   getSessionsWithFileChanges,
   getFileHistories,
   getFileHistoryStats,
-} from '@/shared/services/files/server-functions'
+} from '@/shared/services/files/client'
 
 export const Route = createFileRoute('/files/')({
   loader: async () => {

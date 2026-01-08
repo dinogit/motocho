@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { PlansPage } from '@/features/plans/page'
-import { getPlans } from '@/shared/services/plans/server-functions'
+import { getPlans } from '@/shared/services/plans/client'
 
 export const Route = createFileRoute('/plans/')({
   loader: async () => {

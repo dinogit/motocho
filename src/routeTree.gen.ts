@@ -22,7 +22,6 @@ import { Route as PlansIndexRouteImport } from './routes/plans/index'
 import { Route as FilesIndexRouteImport } from './routes/files/index'
 import { Route as SettingsProjectIdRouteImport } from './routes/settings/$projectId'
 import { Route as PlansPlanIdRouteImport } from './routes/plans/$planId'
-import { Route as ApiChatRouteImport } from './routes/api/chat'
 import { Route as TranscriptsProjectIdIndexRouteImport } from './routes/transcripts/$projectId/index'
 import { Route as FilesSessionIdIndexRouteImport } from './routes/files/$sessionId/index'
 import { Route as TranscriptsProjectIdSessionIdRouteImport } from './routes/transcripts/$projectId/$sessionId'
@@ -93,11 +92,6 @@ const PlansPlanIdRoute = PlansPlanIdRouteImport.update({
   path: '/plans/$planId',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiChatRoute = ApiChatRouteImport.update({
-  id: '/api/chat',
-  path: '/api/chat',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const TranscriptsProjectIdIndexRoute =
   TranscriptsProjectIdIndexRouteImport.update({
     id: '/transcripts/$projectId/',
@@ -128,7 +122,6 @@ export interface FileRoutesByFullPath {
   '/history': typeof HistoryRoute
   '/mcp': typeof McpRoute
   '/skills': typeof SkillsRoute
-  '/api/chat': typeof ApiChatRoute
   '/plans/$planId': typeof PlansPlanIdRoute
   '/settings/$projectId': typeof SettingsProjectIdRoute
   '/files': typeof FilesIndexRoute
@@ -148,7 +141,6 @@ export interface FileRoutesByTo {
   '/history': typeof HistoryRoute
   '/mcp': typeof McpRoute
   '/skills': typeof SkillsRoute
-  '/api/chat': typeof ApiChatRoute
   '/plans/$planId': typeof PlansPlanIdRoute
   '/settings/$projectId': typeof SettingsProjectIdRoute
   '/files': typeof FilesIndexRoute
@@ -169,7 +161,6 @@ export interface FileRoutesById {
   '/history': typeof HistoryRoute
   '/mcp': typeof McpRoute
   '/skills': typeof SkillsRoute
-  '/api/chat': typeof ApiChatRoute
   '/plans/$planId': typeof PlansPlanIdRoute
   '/settings/$projectId': typeof SettingsProjectIdRoute
   '/files/': typeof FilesIndexRoute
@@ -191,7 +182,6 @@ export interface FileRouteTypes {
     | '/history'
     | '/mcp'
     | '/skills'
-    | '/api/chat'
     | '/plans/$planId'
     | '/settings/$projectId'
     | '/files'
@@ -211,7 +201,6 @@ export interface FileRouteTypes {
     | '/history'
     | '/mcp'
     | '/skills'
-    | '/api/chat'
     | '/plans/$planId'
     | '/settings/$projectId'
     | '/files'
@@ -231,7 +220,6 @@ export interface FileRouteTypes {
     | '/history'
     | '/mcp'
     | '/skills'
-    | '/api/chat'
     | '/plans/$planId'
     | '/settings/$projectId'
     | '/files/'
@@ -252,7 +240,6 @@ export interface RootRouteChildren {
   HistoryRoute: typeof HistoryRoute
   McpRoute: typeof McpRoute
   SkillsRoute: typeof SkillsRoute
-  ApiChatRoute: typeof ApiChatRoute
   PlansPlanIdRoute: typeof PlansPlanIdRoute
   SettingsProjectIdRoute: typeof SettingsProjectIdRoute
   FilesIndexRoute: typeof FilesIndexRoute
@@ -359,13 +346,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PlansPlanIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/chat': {
-      id: '/api/chat'
-      path: '/api/chat'
-      fullPath: '/api/chat'
-      preLoaderRoute: typeof ApiChatRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/transcripts/$projectId/': {
       id: '/transcripts/$projectId/'
       path: '/transcripts/$projectId'
@@ -404,7 +384,6 @@ const rootRouteChildren: RootRouteChildren = {
   HistoryRoute: HistoryRoute,
   McpRoute: McpRoute,
   SkillsRoute: SkillsRoute,
-  ApiChatRoute: ApiChatRoute,
   PlansPlanIdRoute: PlansPlanIdRoute,
   SettingsProjectIdRoute: SettingsProjectIdRoute,
   FilesIndexRoute: FilesIndexRoute,
@@ -420,12 +399,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-  }
-}

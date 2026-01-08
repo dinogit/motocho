@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { Page } from '@/features/analytics/page'
-import { getAnalyticsData, getAnalyticsSummary } from '@/shared/services/analytics/server-functions'
+import { getAnalyticsData, getAnalyticsSummary } from '@/shared/services/analytics/client'
 
 export const Route = createFileRoute('/analytics')({
   loader: async () => {

@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { Page } from '@/features/history/page'
-import { getHistory, getHistoryProjects, getHistoryStats } from '@/shared/services/history/server-functions'
+import { getHistory, getHistoryProjects, getHistoryStats } from '@/shared/services/history/client'
 
 export const Route = createFileRoute('/history')({
   loader: async () => {

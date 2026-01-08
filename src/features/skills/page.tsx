@@ -12,7 +12,7 @@ import { toast } from 'sonner'
 import { StatsCards } from './components/stats-cards'
 import { ProjectSection } from './components/project-section'
 import type { SkillsDashboardData } from '@/shared/services/skills/types'
-import { bulkCopy } from '@/shared/services/skills/server-functions'
+import { bulkCopy } from '@/shared/services/skills/client'
 import {
   PageHeader,
   PageHeaderContent,

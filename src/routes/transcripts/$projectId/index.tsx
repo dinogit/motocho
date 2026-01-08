@@ -12,7 +12,7 @@
 
 import { createFileRoute } from '@tanstack/react-router'
 import { Page } from '@/features/projects/page'
-import { getProjectSessions, getProjectStats } from '@/shared/services/transcripts/server-functions'
+import { getProjectSessions, getProjectStats } from '@/shared/services/transcripts/client'
 
 export const Route = createFileRoute('/transcripts/$projectId/')({
   loader: async ({ params }) => {
