@@ -1,29 +1,116 @@
 /**
- * Stub client for Phase 1 - will be implemented with Tauri commands in Phase 2
+ * TypeScript client for transcripts Tauri commands
+ * Communicates with src-tauri/src/commands/transcripts.rs
  */
-import type { Project, Session, SessionDetails, ProjectStats } from './types'
 
+import { invoke } from '@tauri-apps/api/core'
+import type {
+  Project,
+  Session,
+  SessionDetails,
+  ProjectStats,
+  PaginatedMessages,
+} from './types'
+
+/**
+ * Get all projects from ~/.claude/projects/
+ */
 export async function getProjects(): Promise<Project[]> {
-  console.warn('[Phase 1] getProjects not yet implemented')
-  return []
+  try {
+    const projects = await invoke<Project[]>('get_projects')
+    return projects.map((p) => ({
+      ...p,
+      lastModified: new Date(p.lastModified),
+    }))
+  } catch (error) {
+    console.error('Failed to get projects:', error)
+    return []
+  }
 }
 
-export async function getProjectSessions(_projectId: string): Promise<Session[]> {
-  console.warn('[Phase 1] getProjectSessions not yet implemented')
-  return []
+/**
+ * Get all sessions for a project
+ */
+export async function getProjectSessions(projectId: string): Promise<Session[]> {
+  try {
+    const sessions = await invoke<Session[]>('get_project_sessions', { project_id: projectId })
+    return sessions.map((s) => ({
+      ...s,
+      lastModified: new Date(s.lastModified),
+    }))
+  } catch (error) {
+    console.error('Failed to get project sessions:', error)
+    return []
+  }
 }
 
-export async function getSessionDetails(_projectId: string, _sessionId: string,_page?: number): Promise<SessionDetails | null> {
-  console.warn('[Phase 1] getSessionDetails not yet implemented')
-  return null
+/**
+ * Get session details with paginated messages
+ */
+export async function getSessionDetails(
+  projectId: string,
+  sessionId: string,
+  page?: number,
+): Promise<SessionDetails | null> {
+  try {
+    const details = await invoke<SessionDetails>('get_session_details', {
+      project_id: projectId,
+      session_id: sessionId,
+      page,
+    })
+    return {
+      ...details,
+      lastModified: new Date(details.lastModified),
+    }
+  } catch (error) {
+    console.error('Failed to get session details:', error)
+    return null
+  }
 }
 
-export async function getProjectStats(_projectId: string): Promise<ProjectStats | null> {
-  console.warn('[Phase 1] getProjectStats not yet implemented')
-  return null
+/**
+ * Get paginated messages for a session
+ */
+export async function getSessionPaginated(
+  projectId: string,
+  sessionId: string,
+  page?: number,
+): Promise<PaginatedMessages | null> {
+  try {
+    return await invoke<PaginatedMessages>('get_session_paginated', {
+      project_id: projectId,
+      session_id: sessionId,
+      page,
+    })
+  } catch (error) {
+    console.error('Failed to get paginated messages:', error)
+    return null
+  }
 }
 
-export async function deleteSession(_projectId: string, _sessionId: string): Promise<boolean> {
-  console.warn('[Phase 1] deleteSession not yet implemented')
-  return false
+/**
+ * Get aggregated statistics for a project
+ */
+export async function getProjectStats(projectId: string): Promise<ProjectStats | null> {
+  try {
+    return await invoke<ProjectStats>('get_project_stats', { project_id: projectId })
+  } catch (error) {
+    console.error('Failed to get project stats:', error)
+    return null
+  }
+}
+
+/**
+ * Delete a session file
+ */
+export async function deleteSession(projectId: string, sessionId: string): Promise<boolean> {
+  try {
+    return await invoke<boolean>('delete_session', {
+      project_id: projectId,
+      session_id: sessionId,
+    })
+  } catch (error) {
+    console.error('Failed to delete session:', error)
+    return false
+  }
 }

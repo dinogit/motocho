@@ -46,6 +46,13 @@ pub fn run() {
       search_history,
       get_history_stats,
       get_history_projects,
+      // Transcripts commands
+      get_projects,
+      get_project_sessions,
+      get_session_details,
+      get_session_paginated,
+      get_project_stats,
+      delete_session,
     ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
