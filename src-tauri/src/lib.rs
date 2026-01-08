@@ -53,6 +53,9 @@ pub fn run() {
       get_session_paginated,
       get_project_stats,
       delete_session,
+      // Plans commands
+      get_plans,
+      get_plan_by_id,
     ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
