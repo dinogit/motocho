@@ -1,6 +1,8 @@
 mod commands;
 
 use commands::fs_utils::*;
+use commands::analytics::*;
+use commands::history::*;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -36,6 +38,14 @@ pub fn run() {
       path_dirname,
       path_basename,
       path_normalize,
+      // Analytics commands
+      get_analytics_data,
+      get_analytics_summary,
+      // History commands
+      get_history,
+      search_history,
+      get_history_stats,
+      get_history_projects,
     ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");

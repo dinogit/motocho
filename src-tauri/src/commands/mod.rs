@@ -4,6 +4,10 @@
  */
 
 pub mod fs_utils;
+pub mod analytics;
+pub mod history;
 
-// Re-export fs_utils commands
+// Re-export all commands
 pub use fs_utils::*;
+pub use analytics::*;
+pub use history::*;
