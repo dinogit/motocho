@@ -56,6 +56,13 @@ pub fn run() {
       // Plans commands
       get_plans,
       get_plan_by_id,
+      // Settings commands
+      get_settings_data,
+      update_global_settings,
+      update_project_settings,
+      set_model,
+      toggle_thinking,
+      clear_model,
     ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
