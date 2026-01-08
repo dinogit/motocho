@@ -63,6 +63,12 @@ pub fn run() {
       set_model,
       toggle_thinking,
       clear_model,
+      // Library commands
+      save_skill,
+      list_skills,
+      get_skill,
+      delete_skill,
+      get_library_tags,
     ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");

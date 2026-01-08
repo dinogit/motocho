@@ -1,29 +1,86 @@
 /**
- * Stub client for Phase 1 - will be implemented with Tauri commands in Phase 2
+ * TypeScript client for library Tauri commands
+ * Communicates with src-tauri/src/commands/library.rs
  */
+
+import { invoke } from '@tauri-apps/api/core'
 import type { LibrarySkill, LibrarySearchParams, SaveSkillInput } from './types'
 
-export async function saveSkill(_projectId: string, _skill: SaveSkillInput): Promise<LibrarySkill | null> {
-  console.warn('[Phase 1] saveSkill not yet implemented')
-  return null
+/**
+ * Save a new skill to the library
+ */
+export async function saveSkill(projectPath: string, skill: SaveSkillInput): Promise<LibrarySkill | null> {
+  try {
+    const result = await invoke<LibrarySkill>('save_skill', {
+      project_path: projectPath,
+      skill_input: skill,
+    })
+    return {
+      ...result,
+      createdAt: new Date(result.createdAt).toISOString(),
+      updatedAt: new Date(result.updatedAt).toISOString(),
+    }
+  } catch (error) {
+    console.error('Failed to save skill:', error)
+    return null
+  }
 }
 
-export async function listSkills(_projectId: string, _params?: LibrarySearchParams): Promise<LibrarySkill[]> {
-  console.warn('[Phase 1] listSkills not yet implemented')
-  return []
+/**
+ * List all skills in the library with optional search/filter
+ */
+export async function listSkills(projectPath: string, params?: LibrarySearchParams): Promise<LibrarySkill[]> {
+  try {
+    return await invoke<LibrarySkill[]>('list_skills', {
+      project_path: projectPath,
+      params,
+    })
+  } catch (error) {
+    console.error('Failed to list skills:', error)
+    return []
+  }
 }
 
-export async function getSkill(_projectId: string, _skillId: string): Promise<LibrarySkill | null> {
-  console.warn('[Phase 1] getSkill not yet implemented')
-  return null
+/**
+ * Get a specific skill by ID
+ */
+export async function getSkill(projectPath: string, skillId: string): Promise<LibrarySkill | null> {
+  try {
+    return await invoke<LibrarySkill>('get_skill', {
+      project_path: projectPath,
+      skill_id: skillId,
+    })
+  } catch (error) {
+    console.error('Failed to get skill:', error)
+    return null
+  }
 }
 
-export async function deleteSkill(_projectId: string, _skillId: string): Promise<Record<string, unknown> | null> {
-  console.warn('[Phase 1] deleteSkill not yet implemented')
-  return null
+/**
+ * Delete a skill from the library
+ */
+export async function deleteSkill(projectPath: string, skillId: string): Promise<boolean> {
+  try {
+    return await invoke<boolean>('delete_skill', {
+      project_path: projectPath,
+      skill_id: skillId,
+    })
+  } catch (error) {
+    console.error('Failed to delete skill:', error)
+    return false
+  }
 }
 
-export async function getLibraryTags(_projectId: string): Promise<string[]> {
-  console.warn('[Phase 1] getLibraryTags not yet implemented')
-  return []
+/**
+ * Get all unique tags from the library
+ */
+export async function getLibraryTags(projectPath: string): Promise<string[]> {
+  try {
+    return await invoke<string[]>('get_library_tags', {
+      project_path: projectPath,
+    })
+  } catch (error) {
+    console.error('Failed to get library tags:', error)
+    return []
+  }
 }

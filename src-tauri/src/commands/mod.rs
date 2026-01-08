@@ -9,6 +9,7 @@ pub mod history;
 pub mod transcripts;
 pub mod plans;
 pub mod settings;
+pub mod library;
 
 // Re-export all commands
 pub use fs_utils::*;
@@ -17,3 +18,4 @@ pub use history::*;
 pub use transcripts::*;
 pub use plans::*;
 pub use settings::*;
+pub use library::*;
