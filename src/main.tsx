@@ -7,7 +7,6 @@ import { routeTree } from './routeTree.gen'
 
 import './shared/styles/globals.css'
 import reportWebVitals from './reportWebVitals.ts'
-import './shared/styles/globals.css'
 
 // Create a new router instance
 const router = createRouter({
@@ -26,18 +25,26 @@ declare module '@tanstack/react-router' {
   }
 }
 
-// Render the app
-const rootElement = document.getElementById('app')
-if (rootElement && !rootElement.innerHTML) {
-  const root = ReactDOM.createRoot(rootElement)
-  root.render(
-    <StrictMode>
-      <RouterProvider router={router} />
-    </StrictMode>,
-  )
+// Wait for Tauri to be ready before rendering
+async function initializeApp() {
+  // In Tauri v2, the webview is ready when the window loads
+  // Give the Tauri context a moment to initialize
+  await new Promise(resolve => setTimeout(resolve, 100))
+
+  const rootElement = document.getElementById('app')
+  if (rootElement && !rootElement.innerHTML) {
+    const root = ReactDOM.createRoot(rootElement)
+    root.render(
+      <StrictMode>
+        <RouterProvider router={router} />
+      </StrictMode>,
+    )
+  }
+
+  reportWebVitals()
 }
 
-// If you want to start measuring performance in your app, pass a function
-// to log results (for example: reportWebVitals(console.log))
-// or send to an analytics endpoint. Learn more: https://bit.ly/CRA-vitals
-reportWebVitals()
+// Initialize the app
+initializeApp().catch(err => {
+  console.error('Failed to initialize app:', err)
+})

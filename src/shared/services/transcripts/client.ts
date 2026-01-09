@@ -17,13 +17,15 @@ import type {
  */
 export async function getProjects(): Promise<Project[]> {
   try {
+    console.log('[Tauri] Invoking get_projects command...')
     const projects = await invoke<Project[]>('get_projects')
+    console.log('[Tauri] get_projects response:', projects)
     return projects.map((p) => ({
       ...p,
       lastModified: new Date(p.lastModified),
     }))
   } catch (error) {
-    console.error('Failed to get projects:', error)
+    console.error('[Tauri] Failed to get projects:', error)
     return []
   }
 }
