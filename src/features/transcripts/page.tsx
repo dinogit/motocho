@@ -1,5 +1,7 @@
-import { Route } from '@/routes/transcripts/index.tsx'
+import { useState, useEffect } from 'react'
 import { ProjectList } from './components/project-list'
+import { getProjects } from '@/shared/services/transcripts/client'
+import type { Project } from '@/shared/services/transcripts/types'
 import {
   PageHeader,
   PageHeaderContent,
@@ -8,7 +10,24 @@ import {
 } from '@/shared/components/page/page-header'
 
 export function Page() {
-  const projects = Route.useLoaderData()
+  const [projects, setProjects] = useState<Project[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    async function loadProjects() {
+      try {
+        const data = await getProjects()
+        setProjects(data)
+      } catch (error) {
+        console.error('Failed to load projects:', error)
+        setProjects([])
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    loadProjects()
+  }, [])
 
   return (
     <>
@@ -22,7 +41,13 @@ export function Page() {
         </PageHeaderContent>
       </PageHeader>
       <div className="flex flex-col gap-4 p-6">
-        <ProjectList projects={projects} />
+        {isLoading ? (
+          <div className="flex items-center justify-center py-12 text-muted-foreground">
+            <p>Loading projects...</p>
+          </div>
+        ) : (
+          <ProjectList projects={projects} />
+        )}
       </div>
     </>
   )
