@@ -3,6 +3,10 @@ mod commands;
 use commands::fs_utils::*;
 use commands::analytics::*;
 use commands::history::*;
+use commands::transcripts::*;
+use commands::plans::*;
+use commands::settings::*;
+use commands::library::*;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {

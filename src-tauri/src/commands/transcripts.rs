@@ -232,7 +232,6 @@ async fn read_session_entries(session_path: &Path) -> Result<Vec<RawLogEntry>, S
     let reader = BufReader::new(file);
     let mut lines = reader.lines();
     let mut entries = Vec::new();
-    let mut summary = String::new();
 
     while let Some(line) = lines
         .next_line()
@@ -244,8 +243,8 @@ async fn read_session_entries(session_path: &Path) -> Result<Vec<RawLogEntry>, S
         }
 
         match serde_json::from_str::<RawEntry>(&line) {
-            Ok(RawEntry::Summary(s)) => {
-                summary = s.summary;
+            Ok(RawEntry::Summary(_s)) => {
+                // Summary entries are metadata, skip them
             }
             Ok(RawEntry::Log(log_entry)) => {
                 entries.push(log_entry);
