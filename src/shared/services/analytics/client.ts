@@ -3,7 +3,7 @@
  * Communicates with src-tauri/src/commands/analytics.rs
  */
 
-import { invoke } from '@tauri-apps/api/core'
+import { getTauriInvoke } from '../tauri-invoke'
 import type { StatsCache, AnalyticsSummary } from './types'
 
 /**
@@ -11,6 +11,7 @@ import type { StatsCache, AnalyticsSummary } from './types'
  */
 export async function getAnalyticsData(): Promise<StatsCache | null> {
   try {
+    const invoke = await getTauriInvoke()
     return await invoke<StatsCache>('get_analytics_data')
   } catch (error) {
     console.error('Failed to get analytics data:', error)
@@ -24,6 +25,7 @@ export async function getAnalyticsData(): Promise<StatsCache | null> {
  */
 export async function getAnalyticsSummary(): Promise<AnalyticsSummary | null> {
   try {
+    const invoke = await getTauriInvoke()
     return await invoke<AnalyticsSummary>('get_analytics_summary')
   } catch (error) {
     console.error('Failed to get analytics summary:', error)

@@ -3,7 +3,7 @@
  * Communicates with src-tauri/src/commands/library.rs
  */
 
-import { invoke } from '@tauri-apps/api/core'
+import { getTauriInvoke } from '../tauri-invoke'
 import type { LibrarySkill, LibrarySearchParams, SaveSkillInput } from './types'
 
 /**
@@ -11,6 +11,7 @@ import type { LibrarySkill, LibrarySearchParams, SaveSkillInput } from './types'
  */
 export async function saveSkill(projectPath: string, skill: SaveSkillInput): Promise<LibrarySkill | null> {
   try {
+    const invoke = await getTauriInvoke()
     const result = await invoke<LibrarySkill>('save_skill', {
       project_path: projectPath,
       skill_input: skill,
@@ -31,6 +32,7 @@ export async function saveSkill(projectPath: string, skill: SaveSkillInput): Pro
  */
 export async function listSkills(projectPath: string, params?: LibrarySearchParams): Promise<LibrarySkill[]> {
   try {
+    const invoke = await getTauriInvoke()
     return await invoke<LibrarySkill[]>('list_skills', {
       project_path: projectPath,
       params,
@@ -46,6 +48,7 @@ export async function listSkills(projectPath: string, params?: LibrarySearchPara
  */
 export async function getSkill(projectPath: string, skillId: string): Promise<LibrarySkill | null> {
   try {
+    const invoke = await getTauriInvoke()
     return await invoke<LibrarySkill>('get_skill', {
       project_path: projectPath,
       skill_id: skillId,
@@ -61,6 +64,7 @@ export async function getSkill(projectPath: string, skillId: string): Promise<Li
  */
 export async function deleteSkill(projectPath: string, skillId: string): Promise<boolean> {
   try {
+    const invoke = await getTauriInvoke()
     return await invoke<boolean>('delete_skill', {
       project_path: projectPath,
       skill_id: skillId,
@@ -76,6 +80,7 @@ export async function deleteSkill(projectPath: string, skillId: string): Promise
  */
 export async function getLibraryTags(projectPath: string): Promise<string[]> {
   try {
+    const invoke = await getTauriInvoke()
     return await invoke<string[]>('get_library_tags', {
       project_path: projectPath,
     })

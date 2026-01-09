@@ -3,6 +3,7 @@
  * Communicates with src-tauri/src/commands/transcripts.rs
  */
 
+import { getTauriInvoke } from '../tauri-invoke'
 import type {
   Project,
   Session,
@@ -11,33 +12,12 @@ import type {
   PaginatedMessages,
 } from './types'
 
-// Dynamically import invoke to ensure Tauri is fully initialized
-async function getInvoke() {
-  let attempts = 0
-  while (attempts < 50) {
-    try {
-      const { invoke } = await import('@tauri-apps/api/core')
-      if (typeof invoke !== 'undefined') {
-        console.log('[Tauri] invoke imported successfully')
-        return invoke
-      }
-    } catch (e) {
-      // Tauri not ready yet
-    }
-    await new Promise(r => setTimeout(r, 10))
-    attempts++
-  }
-  throw new Error('Failed to load Tauri invoke after 500ms')
-}
-
 /**
  * Get all projects from ~/.claude/projects/
  */
 export async function getProjects(): Promise<Project[]> {
   try {
-    console.log('[Tauri] Getting invoke function...')
-    const invoke = await getInvoke()
-
+    const invoke = await getTauriInvoke()
     console.log('[Tauri] Invoking get_projects command...')
     const projects = await invoke<Project[]>('get_projects')
     console.log('[Tauri] get_projects response:', projects)

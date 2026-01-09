@@ -3,7 +3,7 @@
  * Communicates with src-tauri/src/commands/plans.rs
  */
 
-import { invoke } from '@tauri-apps/api/core'
+import { getTauriInvoke } from '../tauri-invoke'
 import type { Plan, PlanSummary } from './types'
 
 /**
@@ -11,6 +11,7 @@ import type { Plan, PlanSummary } from './types'
  */
 export async function getPlans(): Promise<PlanSummary[]> {
   try {
+    const invoke = await getTauriInvoke()
     const plans = await invoke<PlanSummary[]>('get_plans')
     return plans.map((p) => ({
       ...p,
@@ -27,6 +28,7 @@ export async function getPlans(): Promise<PlanSummary[]> {
  */
 export async function getPlanById(planId: string): Promise<Plan | null> {
   try {
+    const invoke = await getTauriInvoke()
     const plan = await invoke<Plan>('get_plan_by_id', { plan_id: planId })
     return {
       ...plan,
