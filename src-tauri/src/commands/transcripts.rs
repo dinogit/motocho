@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use tokio::fs::File;
 use tokio::io::{AsyncBufReadExt, BufReader};
 
@@ -223,8 +223,6 @@ fn get_file_modified_time(path: &Path) -> i64 {
         .map(|d| d.as_millis() as i64)
         .unwrap_or(0)
 }
-
-use std::path::Path;
 
 async fn read_session_entries(session_path: &Path) -> Result<Vec<RawLogEntry>, String> {
     let file = tokio::fs::File::open(session_path)

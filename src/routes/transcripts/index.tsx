@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
-import {getProjects} from "@/shared/services/transcripts/server-functions.ts";
+import {getProjects} from "@/shared/services/transcripts/client";
 import {Page} from "@/features/transcripts/page.tsx";
 
 export const Route = createFileRoute('/transcripts/')({

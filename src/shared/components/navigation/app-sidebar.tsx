@@ -33,7 +33,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/shared/components/ui/sidebar"
-import { getProjects } from "@/shared/services/transcripts/server-functions"
+import { getProjects } from "@/shared/services/transcripts/client"
 import type { Project } from "@/shared/services/transcripts/types"
 import {ModeToggle} from "@/shared/components/effects/mode-toggle.tsx";
 

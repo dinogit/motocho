@@ -2,7 +2,7 @@ import * as React from "react"
 import { useState, useEffect } from "react"
 import { cn } from "@/shared/lib/utils.ts"
 import { SidebarTrigger } from "@/shared/components/ui/sidebar.tsx"
-import { getUsageInfo } from "@/shared/services/usage/server-functions"
+import { getUsageInfo } from "@/shared/services/usage/client"
 import { GaugeIcon } from "lucide-react"
 
 function UsageIndicator() {
