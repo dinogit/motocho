@@ -27,9 +27,21 @@ declare module '@tanstack/react-router' {
 
 // Wait for Tauri to be ready before rendering
 async function initializeApp() {
-  // In Tauri v2, the webview is ready when the window loads
-  // Give the Tauri context a moment to initialize
-  await new Promise(resolve => setTimeout(resolve, 100))
+  // Wait for document to be interactive
+  if (document.readyState === 'loading') {
+    await new Promise(resolve => {
+      document.addEventListener('DOMContentLoaded', resolve, { once: true })
+    })
+  }
+
+  // Wait for Tauri to initialize (check for __TAURI__ object or wait longer)
+  let attempts = 0
+  while (typeof (window as any).__TAURI__ === 'undefined' && attempts < 50) {
+    await new Promise(resolve => setTimeout(resolve, 10))
+    attempts++
+  }
+
+  console.log('[Init] Tauri ready, rendering app...')
 
   const rootElement = document.getElementById('app')
   if (rootElement && !rootElement.innerHTML) {

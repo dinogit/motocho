@@ -17,6 +17,17 @@ import type {
  */
 export async function getProjects(): Promise<Project[]> {
   try {
+    // Check if Tauri is available
+    if (typeof (window as any).__TAURI__ === 'undefined') {
+      console.warn('[Tauri] Tauri not available yet, waiting...')
+      // Wait for Tauri to be ready
+      let attempts = 0
+      while (typeof (window as any).__TAURI__ === 'undefined' && attempts < 30) {
+        await new Promise(r => setTimeout(r, 10))
+        attempts++
+      }
+    }
+
     console.log('[Tauri] Invoking get_projects command...')
     const projects = await invoke<Project[]>('get_projects')
     console.log('[Tauri] get_projects response:', projects)
