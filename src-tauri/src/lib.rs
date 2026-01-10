@@ -5,6 +5,10 @@ use commands::analytics::*;
 use commands::history::*;
 use commands::transcripts::*;
 use commands::plans::*;
+use commands::files::*;
+use commands::mcp::*;
+use commands::skills::*;
+use commands::ai_chat::*;
 use commands::settings::*;
 use commands::library::*;
 
@@ -60,6 +64,30 @@ pub fn run() {
       // Plans commands
       get_plans,
       get_plan_by_id,
+      // Files commands
+      get_all_file_changes,
+      get_file_history_stats,
+      get_file_histories,
+      get_sessions_with_file_changes,
+      get_session_file_changes,
+      get_file_change_by_hash,
+      // MCP commands
+      get_mcp_data,
+      check_server_status,
+      toggle_mcp_server,
+      add_mcp_server,
+      copy_mcp_to_project,
+      get_all_projects,
+      // Skills commands
+      get_skills_data,
+      copy_skill,
+      delete_skill_file,
+      toggle_skill,
+      get_project_skills_cmd,
+      bulk_copy,
+      // AI Chat commands
+      start_chat,
+      emit_chat_complete,
       // Settings commands
       get_settings_data,
       update_global_settings,

@@ -13,6 +13,7 @@ use std::path::PathBuf;
 // ============================================================================
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Plan {
     /// Plan ID (filename without extension)
     pub id: String,
@@ -23,16 +24,15 @@ pub struct Plan {
     /// Full markdown content
     pub content: String,
     /// File path
-    #[serde(rename = "filePath")]
     pub file_path: String,
     /// Last modified timestamp in ms
-    #[serde(rename = "lastModified")]
     pub last_modified: i64,
     /// File size in bytes
     pub size: u64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct PlanSummary {
     /// Plan ID (filename without extension)
     pub id: String,
@@ -41,7 +41,6 @@ pub struct PlanSummary {
     /// Overview/description extracted from content
     pub overview: String,
     /// Last modified timestamp in ms
-    #[serde(rename = "lastModified")]
     pub last_modified: i64,
 }
 

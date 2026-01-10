@@ -7,7 +7,7 @@
 
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::json;
 use std::path::PathBuf;
 use uuid::Uuid;
 

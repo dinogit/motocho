@@ -4,7 +4,7 @@ import { getSessionFileChanges } from '@/shared/services/files/client'
 
 export const Route = createFileRoute('/files/$sessionId/')({
   loader: async ({ params }) => {
-    return getSessionFileChanges({ data: params.sessionId })
+    return getSessionFileChanges(params.sessionId)
   },
   component: SessionPage,
 })

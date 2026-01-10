@@ -73,7 +73,7 @@ export function SkillCard({
   async function handleDelete() {
     setIsDeleting(true)
     try {
-      const result = await deleteSkill({ data: { skillPath: skill.path } })
+      const result = await deleteSkill(skill.path)
 
       if (result.success) {
         toast.success(`Deleted "${skill.name}"`)

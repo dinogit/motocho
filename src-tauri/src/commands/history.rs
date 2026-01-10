@@ -7,7 +7,6 @@
 use chrono::{DateTime, Local, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
-use tokio::fs::File;
 use tokio::io::{AsyncBufReadExt, BufReader};
 
 // ============================================================================
@@ -15,17 +14,17 @@ use tokio::io::{AsyncBufReadExt, BufReader};
 // ============================================================================
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct HistoryEntry {
     pub display: String,
-    #[serde(rename = "pastedContents")]
     pub pasted_contents: HashMap<String, serde_json::Value>,
     pub timestamp: i64, // Unix timestamp in milliseconds
     pub project: String,
-    #[serde(rename = "sessionId")]
     pub session_id: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct SearchResult {
     pub entry: HistoryEntry,
     pub project_name: String,
@@ -34,6 +33,7 @@ pub struct SearchResult {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct HistoryStats {
     pub total_prompts: usize,
     pub unique_projects: usize,
@@ -42,12 +42,14 @@ pub struct HistoryStats {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct DateRange {
     pub first: i64,
     pub last: i64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ProjectInfo {
     pub path: String,
     pub name: String,
@@ -197,7 +199,12 @@ pub async fn get_history_stats() -> Result<HistoryStats, String> {
     let entries = read_history_entries().await?;
 
     if entries.is_empty() {
-        return Err("No history entries found".to_string());
+        return Ok(HistoryStats {
+            total_prompts: 0,
+            unique_projects: 0,
+            unique_sessions: 0,
+            date_range: DateRange { first: 0, last: 0 },
+        });
     }
 
     let projects: HashSet<String> = entries.iter().map(|e| e.project.clone()).collect();

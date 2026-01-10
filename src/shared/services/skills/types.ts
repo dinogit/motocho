@@ -84,3 +84,31 @@ export interface SkillsStats {
   /** Total skills across all projects */
   totalSkills: number
 }
+
+// ============================================================================
+// Bulk Copy Types
+// ============================================================================
+
+/**
+ * Item to bulk copy (skill or CLAUDE.md)
+ */
+export interface BulkCopyItem {
+  /** Type of item: 'skill' or 'claude_md' */
+  type: 'skill' | 'claude_md'
+  /** Source path or project path */
+  source: string
+  /** Project path where source is located */
+  sourceProject: string
+}
+
+/**
+ * Result of bulk copy operation
+ */
+export interface BulkCopyResult {
+  /** Whether all items copied successfully */
+  success: boolean
+  /** Number of items copied */
+  copiedCount: number
+  /** Items that failed to copy */
+  failedItems: string[]
+}

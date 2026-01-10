@@ -8,6 +8,8 @@ interface StatsBarProps {
 }
 
 export function StatsBar({ stats, resultCount, isFiltered }: StatsBarProps) {
+  if (!stats) return null;
+
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
       {isFiltered && resultCount !== undefined ? (
@@ -18,17 +20,17 @@ export function StatsBar({ stats, resultCount, isFiltered }: StatsBarProps) {
         <>
           <span className="flex items-center gap-1.5">
             <MessageSquare className="h-4 w-4" />
-            {stats.totalPrompts.toLocaleString()} prompts
+            {(stats.totalPrompts || 0).toLocaleString()} prompts
           </span>
           <span>·</span>
           <span className="flex items-center gap-1.5">
             <FolderOpen className="h-4 w-4" />
-            {stats.uniqueProjects} projects
+            {(stats.uniqueProjects || 0).toLocaleString()} projects
           </span>
           <span>·</span>
           <span className="flex items-center gap-1.5">
             <Layers className="h-4 w-4" />
-            {stats.uniqueSessions} sessions
+            {(stats.uniqueSessions || 0).toLocaleString()} sessions
           </span>
         </>
       )}

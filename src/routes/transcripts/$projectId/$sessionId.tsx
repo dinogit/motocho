@@ -8,12 +8,6 @@ export const Route = createFileRoute('/transcripts/$projectId/$sessionId')({
   }),
   loaderDeps: ({ search }) => ({ page: search.page }),
   loader: ({ params, deps }) =>
-    getSessionDetails({
-      data: {
-        projectId: params.projectId,
-        sessionId: params.sessionId,
-        page: deps.page,
-      },
-    }),
+    getSessionDetails(params.projectId, params.sessionId, deps.page),
   component: Page,
 })

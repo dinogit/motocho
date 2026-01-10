@@ -92,7 +92,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   useEffect(() => {
     async function loadProjects() {
       try {
+        console.log("[AppSidebar] Loading projects...")
         const projects = await getProjects()
+        console.log("[AppSidebar] Projects loaded:", projects)
+
+        if (!projects || projects.length === 0) {
+          console.log("[AppSidebar] No projects found")
+          return
+        }
 
         // Convert projects to nav sub-items
         const projectSubItems = projects.map((project: Project) => ({
@@ -114,9 +121,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         newNavItems.splice(2, 0, projectsNavItem)
 
         setNavItems(newNavItems)
+        console.log("[AppSidebar] Nav items updated with projects")
       } catch (error) {
-        console.error("Failed to load projects:", error)
-        // Keep static nav items on error
+        console.error("[AppSidebar] Failed to load projects:", error)
+        // Keep static nav items on error - this is safe fallback
       }
     }
 

@@ -85,7 +85,7 @@ export function ServerCard({
     setError(undefined)
 
     try {
-      const result = await checkServerStatus({ data: { url: server.url } })
+      const result = await checkServerStatus(server.url)
       setStatus(result.online ? 'online' : 'offline')
       if (!result.online) {
         setError(result.error)

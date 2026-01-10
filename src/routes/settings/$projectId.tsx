@@ -11,7 +11,7 @@ export const Route = createFileRoute('/settings/$projectId')({
 
     // Load data for this specific project
     const [settings, skills, mcp] = await Promise.all([
-      getSettingsData({ data: { projectPath } }),
+      getSettingsData(projectPath),
       getSkillsData(),
       getMcpData(),
     ])

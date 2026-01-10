@@ -32,13 +32,11 @@ export function Page() {
     setIsSearching(true)
 
     try {
-      const searchResults = await searchHistory({
-        data: {
-          query,
-          project: selectedProjectRef.current === 'all' ? undefined : selectedProjectRef.current,
-          limit: 100,
-        },
-      })
+      const searchResults = await searchHistory(
+        query,
+        selectedProjectRef.current === 'all' ? undefined : selectedProjectRef.current,
+        100,
+      )
       setResults(searchResults)
     } finally {
       setIsSearching(false)
@@ -50,13 +48,11 @@ export function Page() {
     setIsSearching(true)
 
     try {
-      const searchResults = await searchHistory({
-        data: {
-          query: searchQueryRef.current,
-          project: project === 'all' ? undefined : project,
-          limit: 100,
-        },
-      })
+      const searchResults = await searchHistory(
+        searchQueryRef.current,
+        project === 'all' ? undefined : project,
+        100,
+      )
       setResults(searchResults)
     } finally {
       setIsSearching(false)

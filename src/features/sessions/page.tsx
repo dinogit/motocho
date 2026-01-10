@@ -21,8 +21,8 @@ export function Page() {
   const [chatContext, setChatContext] = useState<ChatContext | null>(null)
 
   const handleDelete = async () => {
-    const result = await deleteSession({ data: { projectId, sessionId } })
-    if (result.success) {
+    const success = await deleteSession(projectId, sessionId)
+    if (success) {
       navigate({ to: '/transcripts/$projectId', params: { projectId } })
     }
   }

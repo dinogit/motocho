@@ -35,25 +35,25 @@ export function DetailPage() {
 
     const handleModelChange = async (model: string) => {
         if (model === 'default') {
-            await setModel({ data: { model: '', scope: 'project', projectPath } })
+            await clearModel('project', projectPath)
         } else {
-            await setModel({ data: { model, scope: 'project', projectPath } })
+            await setModel(model, 'project', projectPath)
         }
         router.invalidate()
     }
 
     const handleThinkingToggle = async (enabled: boolean) => {
-        await toggleThinking({ data: { enabled, scope: 'global' } })
+        await toggleThinking(enabled, 'global')
         router.invalidate()
     }
 
     const handleSkillToggle = async (skill: Skill, enabled: boolean) => {
-        await toggleSkill({ data: { skillPath: skill.path, enabled } })
+        await toggleSkill(skill.path, enabled)
         router.invalidate()
     }
 
     const handleMcpToggle = async (server: McpServer, enabled: boolean) => {
-        await toggleMcpServer({ data: { projectPath, serverName: server.name, enabled } })
+        await toggleMcpServer(projectPath, server.name, enabled)
         router.invalidate()
     }
 

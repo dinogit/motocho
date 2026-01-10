@@ -3,7 +3,7 @@
  * Communicates with src-tauri/src/commands/settings.rs
  */
 
-import { getTauriInvoke } from '../tauri-invoke'
+import { invoke } from '@tauri-apps/api/core'
 import type { SettingsDashboardData, ClaudeSettings, ProjectSettings } from './types'
 
 /**
@@ -11,8 +11,7 @@ import type { SettingsDashboardData, ClaudeSettings, ProjectSettings } from './t
  */
 export async function getSettingsData(projectPath?: string): Promise<SettingsDashboardData | null> {
   try {
-    const invoke = await getTauriInvoke()
-    return await invoke<SettingsDashboardData>('get_settings_data', { project_path: projectPath })
+    return await invoke<SettingsDashboardData>('get_settings_data', { projectPath })
   } catch (error) {
     console.error('Failed to get settings data:', error)
     return null
@@ -24,7 +23,6 @@ export async function getSettingsData(projectPath?: string): Promise<SettingsDas
  */
 export async function updateGlobalSettings(settings: ClaudeSettings): Promise<Record<string, unknown> | null> {
   try {
-    const invoke = await getTauriInvoke()
     return await invoke<Record<string, unknown>>('update_global_settings', { settings })
   } catch (error) {
     console.error('Failed to update global settings:', error)
@@ -40,9 +38,8 @@ export async function updateProjectSettings(
   settings: ProjectSettings,
 ): Promise<Record<string, unknown> | null> {
   try {
-    const invoke = await getTauriInvoke()
     return await invoke<Record<string, unknown>>('update_project_settings', {
-      project_path: projectPath,
+      projectPath,
       settings,
     })
   } catch (error) {
@@ -60,11 +57,10 @@ export async function setModel(
   projectPath?: string,
 ): Promise<Record<string, unknown> | null> {
   try {
-    const invoke = await getTauriInvoke()
     return await invoke<Record<string, unknown>>('set_model', {
       model,
       scope,
-      project_path: projectPath,
+      projectPath,
     })
   } catch (error) {
     console.error('Failed to set model:', error)
@@ -81,11 +77,10 @@ export async function toggleThinking(
   projectPath?: string,
 ): Promise<Record<string, unknown> | null> {
   try {
-    const invoke = await getTauriInvoke()
     return await invoke<Record<string, unknown>>('toggle_thinking', {
       enabled,
       scope,
-      project_path: projectPath,
+      projectPath,
     })
   } catch (error) {
     console.error('Failed to toggle thinking:', error)
@@ -98,10 +93,9 @@ export async function toggleThinking(
  */
 export async function clearModel(scope: string, projectPath?: string): Promise<Record<string, unknown> | null> {
   try {
-    const invoke = await getTauriInvoke()
     return await invoke<Record<string, unknown>>('clear_model', {
       scope,
-      project_path: projectPath,
+      projectPath,
     })
   } catch (error) {
     console.error('Failed to clear model:', error)

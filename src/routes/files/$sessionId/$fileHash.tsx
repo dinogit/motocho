@@ -4,9 +4,7 @@ import { getFileChangeByHash } from '@/shared/services/files/client'
 
 export const Route = createFileRoute('/files/$sessionId/$fileHash')({
   loader: async ({ params }) => {
-    return getFileChangeByHash({
-      data: { sessionId: params.sessionId, hash: params.fileHash },
-    })
+    return getFileChangeByHash(params.sessionId, params.fileHash)
   },
   component: DiffPage,
 })

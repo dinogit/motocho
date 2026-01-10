@@ -3,7 +3,7 @@
  * Communicates with src-tauri/src/commands/transcripts.rs
  */
 
-import { getTauriInvoke } from '../tauri-invoke'
+import { invoke } from '@tauri-apps/api/core'
 import type {
   Project,
   Session,
@@ -17,16 +17,13 @@ import type {
  */
 export async function getProjects(): Promise<Project[]> {
   try {
-    const invoke = await getTauriInvoke()
-    console.log('[Tauri] Invoking get_projects command...')
     const projects = await invoke<Project[]>('get_projects')
-    console.log('[Tauri] get_projects response:', projects)
     return projects.map((p) => ({
       ...p,
       lastModified: new Date(p.lastModified),
     }))
   } catch (error) {
-    console.error('[Tauri] Failed to get projects:', error)
+    console.error('[Transcripts] Failed to get projects:', error)
     return []
   }
 }
@@ -36,13 +33,13 @@ export async function getProjects(): Promise<Project[]> {
  */
 export async function getProjectSessions(projectId: string): Promise<Session[]> {
   try {
-    const sessions = await invoke<Session[]>('get_project_sessions', { project_id: projectId })
+    const sessions = await invoke<Session[]>('get_project_sessions', { projectId })
     return sessions.map((s) => ({
       ...s,
       lastModified: new Date(s.lastModified),
     }))
   } catch (error) {
-    console.error('Failed to get project sessions:', error)
+    console.error('[Transcripts] Failed to get project sessions:', error)
     return []
   }
 }
@@ -54,19 +51,34 @@ export async function getSessionDetails(
   projectId: string,
   sessionId: string,
   page?: number,
-): Promise<SessionDetails | null> {
+): Promise<{ session: Session; pagination: PaginatedMessages } | null> {
   try {
     const details = await invoke<SessionDetails>('get_session_details', {
-      project_id: projectId,
-      session_id: sessionId,
+      projectId,
+      sessionId,
       page,
     })
-    return {
-      ...details,
-      lastModified: new Date(details.lastModified),
+    
+    const session: Session = {
+      id: details.id,
+      projectId: details.project_id,
+      filePath: details.file_path,
+      lastModified: new Date(details.last_modified),
+      messageCount: details.message_count,
+      summary: details.summary,
+      stats: details.stats,
     }
+
+    const pagination: PaginatedMessages = {
+      messages: details.messages,
+      totalPages: details.stats?.totalPages || 1,
+      currentPage: page || 1,
+      totalMessages: details.message_count,
+    }
+
+    return { session, pagination }
   } catch (error) {
-    console.error('Failed to get session details:', error)
+    console.error('[Transcripts] Failed to get session details:', error)
     return null
   }
 }
@@ -81,12 +93,12 @@ export async function getSessionPaginated(
 ): Promise<PaginatedMessages | null> {
   try {
     return await invoke<PaginatedMessages>('get_session_paginated', {
-      project_id: projectId,
-      session_id: sessionId,
+      projectId,
+      sessionId,
       page,
     })
   } catch (error) {
-    console.error('Failed to get paginated messages:', error)
+    console.error('[Transcripts] Failed to paginated messages:', error)
     return null
   }
 }
@@ -96,9 +108,16 @@ export async function getSessionPaginated(
  */
 export async function getProjectStats(projectId: string): Promise<ProjectStats | null> {
   try {
-    return await invoke<ProjectStats>('get_project_stats', { project_id: projectId })
+    const stats = await invoke<ProjectStats>('get_project_stats', { projectId })
+    if (!stats) return null
+    
+    return {
+      ...stats,
+      firstSession: stats.firstSession ? new Date(stats.firstSession) : null,
+      lastSession: stats.lastSession ? new Date(stats.lastSession) : null,
+    }
   } catch (error) {
-    console.error('Failed to get project stats:', error)
+    console.error('[Transcripts] Failed to get project stats:', error)
     return null
   }
 }
@@ -109,11 +128,11 @@ export async function getProjectStats(projectId: string): Promise<ProjectStats |
 export async function deleteSession(projectId: string, sessionId: string): Promise<boolean> {
   try {
     return await invoke<boolean>('delete_session', {
-      project_id: projectId,
-      session_id: sessionId,
+      projectId,
+      sessionId,
     })
   } catch (error) {
-    console.error('Failed to delete session:', error)
+    console.error('[Transcripts] Failed to delete session:', error)
     return false
   }
 }

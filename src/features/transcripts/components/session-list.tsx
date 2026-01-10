@@ -33,7 +33,7 @@ export function SessionList({ sessions, projectId }: SessionListProps) {
           <Card className="transition-colors hover:bg-muted/50">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium leading-snug line-clamp-2">
-                {session.summary}
+                {session.summary || (session.id.startsWith('agent-') ? 'Agent Session' : 'Untitled Session')}
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-0 space-y-2">

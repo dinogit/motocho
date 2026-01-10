@@ -7,6 +7,7 @@ import { routeTree } from './routeTree.gen'
 
 import './shared/styles/globals.css'
 import reportWebVitals from './reportWebVitals.ts'
+import {CatchBoundary} from "@/shared/components/effects/catch-boundary.tsx";
 
 // Create a new router instance
 const router = createRouter({
@@ -16,6 +17,7 @@ const router = createRouter({
   scrollRestoration: true,
   defaultStructuralSharing: true,
   defaultPreloadStaleTime: 0,
+  defaultErrorComponent: CatchBoundary,
 })
 
 // Register the router instance for type safety
@@ -25,38 +27,17 @@ declare module '@tanstack/react-router' {
   }
 }
 
-// Wait for Tauri to be ready before rendering
-async function initializeApp() {
-  // Wait for document to be interactive
-  if (document.readyState === 'loading') {
-    await new Promise(resolve => {
-      document.addEventListener('DOMContentLoaded', resolve, { once: true })
-    })
-  }
-
-  // Wait for Tauri to initialize (check for __TAURI__ object or wait longer)
-  let attempts = 0
-  while (typeof (window as any).__TAURI__ === 'undefined' && attempts < 50) {
-    await new Promise(resolve => setTimeout(resolve, 10))
-    attempts++
-  }
-
-  console.log('[Init] Tauri ready, rendering app...')
-
-  const rootElement = document.getElementById('app')
-  if (rootElement && !rootElement.innerHTML) {
-    const root = ReactDOM.createRoot(rootElement)
-    root.render(
-      <StrictMode>
-        <RouterProvider router={router} />
-      </StrictMode>,
-    )
-  }
-
-  reportWebVitals()
+// Initialize the app
+const rootElement = document.getElementById('app')
+if (!rootElement) {
+  throw new Error('Root element #app not found in DOM')
 }
 
-// Initialize the app
-initializeApp().catch(err => {
-  console.error('Failed to initialize app:', err)
-})
+const root = ReactDOM.createRoot(rootElement)
+root.render(
+  <StrictMode>
+    <RouterProvider router={router} />
+  </StrictMode>,
+)
+
+reportWebVitals()

@@ -18,7 +18,7 @@ export const Route = createFileRoute('/settings/')({
     // Load settings for each project
     const projectSettings = await Promise.all(
       allProjects.map(project =>
-        getSettingsData({ data: { projectPath: project.path } })
+        getSettingsData(project.path)
       )
     )
 
