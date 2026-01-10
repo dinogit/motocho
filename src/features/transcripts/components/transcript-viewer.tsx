@@ -32,6 +32,7 @@ interface TranscriptViewerProps {
   onPageChange: (page: number) => void
   onAsk?: (content: string, toolName: string, type: 'tool_use' | 'tool_result' | 'text') => void
   onDelete?: () => Promise<void>
+  isRefreshing?: boolean
 }
 
 /**
@@ -57,6 +58,7 @@ export function TranscriptViewer({
   onPageChange,
   onAsk,
   onDelete,
+  isRefreshing = false,
 }: TranscriptViewerProps) {
   const { messages, currentPage, totalPages } = pagination
   const stats = session.stats
@@ -74,27 +76,32 @@ export function TranscriptViewer({
       <Card className="mb-4">
         <CardHeader className="pb-2 flex flex-row items-start justify-between space-y-0">
           <CardTitle className="text-lg">{session.summary}</CardTitle>
-          {onDelete && (
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" disabled={isDeleting}>
-                  {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Delete session?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This will permanently delete this session from disk. This cannot be undone.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleDelete}>Delete</AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          )}
+          <div className="flex items-center gap-2">
+            {isRefreshing && (
+              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+            )}
+            {onDelete && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" disabled={isDeleting}>
+                    {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Delete session?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will permanently delete this session from disk. This cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleDelete}>Delete</AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
+          </div>
         </CardHeader>
         <CardContent className="space-y-3">
           {/* Stats row - like simonw's format */}
@@ -162,7 +169,7 @@ export function TranscriptViewer({
 
       <ScrollArea className="flex-1">
         <div className="space-y-4 pb-4">
-          {messages.map((message) => (
+          {messages.reverse().map((message) => (
             <MessageBlock key={message.uuid} message={message} onAsk={onAsk} />
           ))}
         </div>

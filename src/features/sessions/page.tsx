@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { Route } from '@/routes/transcripts/$projectId/$sessionId.tsx'
 import { TranscriptViewer } from '@/features/transcripts/components/transcript-viewer'
@@ -9,16 +9,44 @@ import {
   PageTitle,
   PageDescription, PageHeaderSeparator,
 } from '@/shared/components/page/page-header'
-import { deleteSession } from '@/shared/services/transcripts/client'
+import { deleteSession, getSessionDetails } from '@/shared/services/transcripts/client'
 
 export function Page() {
-  const data = Route.useLoaderData()
+  const initialData = Route.useLoaderData()
   const { projectId, sessionId } = Route.useParams()
   const navigate = useNavigate()
+  const searchParams = Route.useSearch() as { page?: number }
+
+  // State for auto-refresh
+  const [data, setData] = useState(initialData)
+  const [isRefreshing, setIsRefreshing] = useState(false)
 
   // Chat drawer state
   const [chatOpen, setChatOpen] = useState(false)
   const [chatContext, setChatContext] = useState<ChatContext | null>(null)
+
+  // Auto-refresh every 10 seconds
+  useEffect(() => {
+    async function refreshData() {
+      setIsRefreshing(true)
+      const updatedData = await getSessionDetails(projectId, sessionId, searchParams.page)
+      if (updatedData) {
+        setData(updatedData)
+      }
+      setIsRefreshing(false)
+    }
+
+    const interval = setInterval(refreshData, 10000)
+    return () => clearInterval(interval)
+  }, [projectId, sessionId, searchParams.page])
+
+  if (!data) {
+    return (
+      <div className="flex items-center justify-center py-12 text-muted-foreground">
+        <p>Session not found</p>
+      </div>
+    )
+  }
 
   const handleDelete = async () => {
     const success = await deleteSession(projectId, sessionId)
@@ -59,6 +87,7 @@ export function Page() {
           onPageChange={handlePageChange}
           onAsk={handleAsk}
           onDelete={handleDelete}
+          isRefreshing={isRefreshing}
         />
       </div>
 

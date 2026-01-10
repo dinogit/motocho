@@ -58,7 +58,7 @@ export async function getSessionDetails(
       sessionId,
       page,
     })
-    
+
     const session: Session = {
       id: details.id,
       projectId: details.project_id,

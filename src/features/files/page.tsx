@@ -28,7 +28,8 @@ function formatRelativeTime(date: Date): string {
   return date.toLocaleDateString()
 }
 
-function StatsCards({ stats }: { stats: { totalFiles: number; totalChanges: number; totalLinesWritten: number; sessionCount: number } }) {
+function StatsCards({ stats }: { stats: { totalFiles: number; totalChanges: number; totalLinesWritten: number; sessionCount: number } | null }) {
+  if (!stats) return null
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
       <Card className="p-4">

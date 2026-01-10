@@ -100,15 +100,13 @@ export function ServerCard({
   const handleToggle = async (checked: boolean) => {
     setIsToggling(true)
     try {
-      const result = await toggleMcpServer({
-        data: { projectPath, serverName: server.name, enabled: checked },
-      })
+      const result = await toggleMcpServer(projectPath, server.name, checked)
 
-      if (result.success) {
+      if (result) {
         toast.success(checked ? `Enabled "${server.name}"` : `Disabled "${server.name}"`)
         onToggle?.()
       } else {
-        toast.error(result.error || 'Failed to toggle server')
+        toast.error('Failed to toggle server')
       }
     } catch {
       toast.error('Failed to toggle server')
@@ -121,18 +119,12 @@ export function ServerCard({
   const handleCopy = async (destinationProject: string, destinationName: string) => {
     setIsCopying(true)
     try {
-      const result = await copyMcpToProject({
-        data: {
-          sourceProject: projectPath,
-          serverName: server.name,
-          destinationProject,
-        },
-      })
+      const result = await copyMcpToProject(projectPath, server.name, destinationProject)
 
-      if (result.success) {
+      if (result) {
         toast.success(`Copied "${server.name}" to ${destinationName}`)
       } else {
-        toast.error(result.error || 'Failed to copy server')
+        toast.error('Failed to copy server')
       }
     } catch {
       toast.error('Failed to copy server')
