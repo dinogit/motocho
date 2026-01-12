@@ -160,23 +160,23 @@ fn extract_file_changes_from_message(
 
     if let Value::Array(blocks) = content {
         for block in blocks {
-            if block.get("type").and_then(|v| v.as_str()) == Some("tool_result") {
-                // Look for tool_use blocks that indicate Write/Edit operations
-                if let Some(_tool_use_id) = block.get("tool_use_id").and_then(|v| v.as_str()) {
-                    if let Some(text) = block.get("content").and_then(|v| v.as_str()) {
-                        // Parse Write tool result: contains filePath and content
-                        if text.contains("\"filePath\"") {
-                            if let Ok(json) = serde_json::from_str::<serde_json::Value>(text) {
-                                if let (Some(file_path), Some(content_str)) =
-                                    (json.get("filePath").and_then(|v| v.as_str()),
-                                     json.get("content").and_then(|v| v.as_str()))
+            // Look for tool_use blocks that are Write or Edit operations
+            if block.get("type").and_then(|v| v.as_str()) == Some("tool_use") {
+                if let Some(tool_name) = block.get("name").and_then(|v| v.as_str()) {
+                    if tool_name == "Write" || tool_name == "Edit" {
+                        if let Some(input) = block.get("input") {
+                            let file_path = input.get("file_path").and_then(|v| v.as_str());
+
+                            if tool_name == "Write" {
+                                if let (Some(file_path_str), Some(content_str)) =
+                                    (file_path, input.get("content").and_then(|v| v.as_str()))
                                 {
                                     let hash = calculate_hash(content_str);
                                     changes.push(FileChange {
                                         hash,
                                         session_id: session_id.to_string(),
                                         project_id: project_id.to_string(),
-                                        file_path: file_path.to_string(),
+                                        file_path: file_path_str.to_string(),
                                         change_type: "write".to_string(),
                                         timestamp: timestamp.to_string(),
                                         content: content_str.to_string(),
@@ -184,22 +184,17 @@ fn extract_file_changes_from_message(
                                         message_uuid: message_uuid.to_string(),
                                     });
                                 }
-                            }
-                        }
-                        // Parse Edit tool result: contains filePath, old_string, new_string
-                        if text.contains("\"old_string\"") && text.contains("\"new_string\"") {
-                            if let Ok(json) = serde_json::from_str::<serde_json::Value>(text) {
-                                if let (Some(file_path), Some(new_str), Some(old_str)) =
-                                    (json.get("filePath").and_then(|v| v.as_str()),
-                                     json.get("new_string").and_then(|v| v.as_str()),
-                                     json.get("old_string").and_then(|v| v.as_str()))
+                            } else if tool_name == "Edit" {
+                                if let (Some(file_path_str), Some(new_str), Some(old_str)) =
+                                    (file_path, input.get("new_string").and_then(|v| v.as_str()),
+                                     input.get("old_string").and_then(|v| v.as_str()))
                                 {
                                     let hash = calculate_hash(new_str);
                                     changes.push(FileChange {
                                         hash,
                                         session_id: session_id.to_string(),
                                         project_id: project_id.to_string(),
-                                        file_path: file_path.to_string(),
+                                        file_path: file_path_str.to_string(),
                                         change_type: "edit".to_string(),
                                         timestamp: timestamp.to_string(),
                                         content: new_str.to_string(),
