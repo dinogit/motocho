@@ -61,19 +61,19 @@ export async function getSessionDetails(
 
     const session: Session = {
       id: details.id,
-      projectId: details.project_id,
-      filePath: details.file_path,
-      lastModified: new Date(details.last_modified),
-      messageCount: details.message_count,
+      projectId: details.projectId,
+      filePath: details.filePath,
+      lastModified: new Date(details.lastModified),
+      messageCount: details.messageCount,
       summary: details.summary,
       stats: details.stats,
     }
 
     const pagination: PaginatedMessages = {
-      messages: details.messages,
+      messages:  details.messages,
       totalPages: details.stats?.totalPages || 1,
       currentPage: page || 1,
-      totalMessages: details.message_count,
+      totalMessages: details.messageCount,
     }
 
     return { session, pagination }

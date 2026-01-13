@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { Route } from '@/routes/transcripts/$projectId/$sessionId.tsx'
 import { TranscriptViewer } from '@/features/transcripts/components/transcript-viewer'
@@ -12,33 +12,26 @@ import {
 import { deleteSession, getSessionDetails } from '@/shared/services/transcripts/client'
 
 export function Page() {
-  const initialData = Route.useLoaderData()
+  const data = Route.useLoaderData()
   const { projectId, sessionId } = Route.useParams()
   const navigate = useNavigate()
   const searchParams = Route.useSearch() as { page?: number }
 
-  // State for auto-refresh
-  const [data, setData] = useState(initialData)
+  console.log({projectId, sessionId})
+  console.log({searchParams})
+
   const [isRefreshing, setIsRefreshing] = useState(false)
 
   // Chat drawer state
   const [chatOpen, setChatOpen] = useState(false)
   const [chatContext, setChatContext] = useState<ChatContext | null>(null)
 
-  // Auto-refresh every 10 seconds
-  useEffect(() => {
-    async function refreshData() {
-      setIsRefreshing(true)
-      const updatedData = await getSessionDetails(projectId, sessionId, searchParams.page)
-      if (updatedData) {
-        setData(updatedData)
-      }
-      setIsRefreshing(false)
-    }
-
-    const interval = setInterval(refreshData, 10000)
-    return () => clearInterval(interval)
-  }, [projectId, sessionId, searchParams.page])
+  // Manual refresh handler
+  const handleRefresh = async () => {
+    setIsRefreshing(true)
+    const updatedData = await getSessionDetails(projectId, sessionId, searchParams.page)
+    setIsRefreshing(false)
+  }
 
   if (!data) {
     return (
@@ -87,6 +80,7 @@ export function Page() {
           onPageChange={handlePageChange}
           onAsk={handleAsk}
           onDelete={handleDelete}
+          onRefresh={handleRefresh}
           isRefreshing={isRefreshing}
         />
       </div>

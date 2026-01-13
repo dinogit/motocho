@@ -8,7 +8,7 @@ import {
 import { Button } from '@/shared/components/ui/button'
 import { ChevronLeft } from 'lucide-react'
 import { ClaudeSettingsCard } from './components/claude-settings-card'
-import { setModel, toggleThinking } from '@/shared/services/settings/client'
+import { setModel, toggleThinking, clearModel } from '@/shared/services/settings/client'
 import { toggleSkill } from '@/shared/services/skills/client'
 import { toggleMcpServer } from '@/shared/services/mcp/client'
 import type { SettingsDashboardData } from '@/shared/services/settings/types'

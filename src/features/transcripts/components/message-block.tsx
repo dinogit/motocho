@@ -39,8 +39,8 @@ export function MessageBlock({ message, onAsk }: MessageBlockProps) {
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
-            <Avatar className={cn('h-8 w-8 shrink-0 cursor-help', isUser ? 'bg-primary' : 'bg-orange-500')}>
-              <AvatarFallback className={cn(isUser ? 'bg-primary text-primary-foreground' : 'bg-orange-500 text-white')}>
+            <Avatar className={cn('h-8 w-8 shrink-0 cursor-help', isUser ? 'bg-primary' : 'bg-chart-1')}>
+              <AvatarFallback className={cn(isUser ? 'bg-primary text-primary-foreground' : 'bg-chart-1 text-white')}>
                 {isUser ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
               </AvatarFallback>
             </Avatar>
@@ -59,7 +59,7 @@ export function MessageBlock({ message, onAsk }: MessageBlockProps) {
           'flex-1 overflow-hidden',
           isUser
             ? 'border-primary/20 bg-primary/5'
-            : 'border-orange-500/20 bg-orange-500/5'
+            : 'border-orange-300/20 bg-primary/5'
         )}
       >
         <CardContent className="p-4">

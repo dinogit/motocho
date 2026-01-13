@@ -45,16 +45,16 @@ export function DailyActivityChart({ data }: DailyActivityChartProps) {
             <Area
               type="monotone"
               dataKey="messages"
-              stroke="var(--color-messages)"
-              fill="var(--color-messages)"
+              stroke="var(--chart-1)"
+              fill="var(--chart-1)"
               fillOpacity={0.3}
               strokeWidth={2}
             />
             <Area
               type="monotone"
               dataKey="toolCalls"
-              stroke="var(--color-toolCalls)"
-              fill="var(--color-toolCalls)"
+              stroke="var(--chart-5)"
+              fill="var(--chart-5)"
               fillOpacity={0.3}
               strokeWidth={2}
             />

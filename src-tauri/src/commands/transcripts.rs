@@ -226,6 +226,30 @@ fn parse_project_id(path: &Path) -> String {
         .to_string()
 }
 
+fn decode_project_name(encoded_name: &str) -> String {
+    // Decode encoded project names: replace dashes with slashes and extract last 2 path parts
+    // e.g., "-path-to-project" becomes "path/to/project" -> "to/project"
+    match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        let decoded = encoded_name
+            .chars()
+            .enumerate()
+            .map(|(i, c)| if c == '-' { '/' } else { c })
+            .collect::<String>();
+
+        let parts: Vec<&str> = decoded.split('/').filter(|s| !s.is_empty()).collect();
+        if parts.len() >= 2 {
+            format!("{}/{}", parts[parts.len() - 2], parts[parts.len() - 1])
+        } else if parts.len() == 1 {
+            parts[0].to_string()
+        } else {
+            encoded_name.to_string()
+        }
+    })) {
+        Ok(result) => result,
+        Err(_) => encoded_name.to_string(),
+    }
+}
+
 fn parse_session_id(filename: &str) -> String {
     filename.trim_end_matches(".jsonl").to_string()
 }
@@ -490,7 +514,7 @@ pub async fn get_projects() -> Result<Vec<Project>, String> {
 
         if path.is_dir() {
             let project_id = parse_project_id(&path);
-            let display_name = project_id.clone();
+            let display_name = decode_project_name(&project_id);
 
             // Count sessions
             let session_count = fs::read_dir(&path)
@@ -623,7 +647,13 @@ pub async fn get_session_details(project_id: String, session_id: String, page: O
     let (total_cost, _) = sum_session_metrics(&entries);
     let stats = calculate_session_stats(&entries, total_cost);
 
-    let display_entries: Vec<&RawLogEntry> = entries.iter().filter(|e| e.message.is_some()).collect();
+    let mut display_entries: Vec<&RawLogEntry> = entries.iter().filter(|e| e.message.is_some()).collect();
+    display_entries.sort_by(|a, b| {
+        // Parse timestamps and sort by actual datetime, newest first
+        let a_ts = DateTime::parse_from_rfc3339(&a.timestamp).ok();
+        let b_ts = DateTime::parse_from_rfc3339(&b.timestamp).ok();
+        b_ts.cmp(&a_ts) // Reverse order (newest first)
+    });
     let page_num = page.unwrap_or(1).saturating_sub(1); // Convert to 0-based
     let start_idx = page_num * MESSAGES_PER_PAGE;
     let end_idx = (start_idx + MESSAGES_PER_PAGE).min(display_entries.len());

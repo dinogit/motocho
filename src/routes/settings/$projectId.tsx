@@ -17,7 +17,7 @@ export const Route = createFileRoute('/settings/$projectId')({
     ])
 
     // Get project name
-    const project = skills.allProjects.find(p => p.path === projectPath)
+    const project = skills?.allProjects.find(p => p.path === projectPath)
     const projectName = project?.name || projectPath
 
     return { settings, skills, mcp, projectPath, projectName }

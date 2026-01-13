@@ -22,8 +22,8 @@ export function ThinkingBlockRenderer({ thinking }: ThinkingBlockRendererProps) 
             size="sm"
             className="w-full justify-start gap-2 h-auto py-2 px-3 hover:bg-yellow-500/10"
           >
-            <Brain className="h-4 w-4 text-yellow-600" />
-            <span className="text-xs font-medium text-yellow-700">Thinking</span>
+            <Brain className="h-4 w-4 text-chart-1" />
+            <span className="text-xs font-medium text-chart-1">Thinking</span>
             {isOpen ? (
               <ChevronDown className="h-3 w-3 ml-auto" />
             ) : (
@@ -39,7 +39,7 @@ export function ThinkingBlockRenderer({ thinking }: ThinkingBlockRendererProps) 
         )}
 
         <CollapsibleContent>
-          <div className="px-3 pb-3 text-sm whitespace-pre-wrap text-muted-foreground">
+          <div className="px-3 pb-3 text-sm whitespace-pre-wrap text-chart-1">
             {thinking}
           </div>
         </CollapsibleContent>

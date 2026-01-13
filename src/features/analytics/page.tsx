@@ -7,7 +7,6 @@ import { DailyActivityChart } from './components/daily-activity-chart'
 import { HourlyActivityChart } from './components/hourly-activity-chart'
 import { TokensChart } from './components/tokens-chart'
 import { ModelUsageCard } from './components/model-usage-card'
-import { CostSavingsCard } from './components/cost-savings-card'
 import {
     PageHeader,
     PageHeaderContent,
@@ -96,11 +95,6 @@ export function Page() {
       <div className="grid gap-6 lg:grid-cols-2">
         <TokensChart data={stats.dailyModelTokens} />
         <ModelUsageCard data={stats.modelUsage} />
-      </div>
-
-      {/* Cost Savings */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        <CostSavingsCard data={stats.modelUsage} />
       </div>
       </div>
     </>

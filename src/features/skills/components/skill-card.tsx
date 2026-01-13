@@ -75,12 +75,12 @@ export function SkillCard({
     try {
       const result = await deleteSkill(skill.path)
 
-      if (result.success) {
+      if (result) {
         toast.success(`Deleted "${skill.name}"`)
         // Reload page to reflect changes
         window.location.reload()
       } else {
-        toast.error(result.error || 'Failed to delete skill')
+        toast.error('Failed to delete skill')
       }
     } catch {
       toast.error('Failed to delete skill')
@@ -92,17 +92,12 @@ export function SkillCard({
   async function handleCopy(destinationProject: string, destinationName: string) {
     setIsCopying(true)
     try {
-      const result = await copySkill({
-        data: {
-          sourcePath: skill.path,
-          destinationProject,
-        },
-      })
+      const result = await copySkill(skill.path, destinationProject)
 
-      if (result.success) {
+      if (result) {
         toast.success(`Copied "${skill.name}" to ${destinationName}`)
       } else {
-        toast.error(result.error || 'Failed to copy skill')
+        toast.error('Failed to copy skill')
       }
     } catch {
       toast.error('Failed to copy skill')

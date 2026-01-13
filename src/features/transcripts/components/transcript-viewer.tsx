@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { MessageBlock } from './message-block'
-import {MessageSquare, Terminal, FileCode, DollarSign, Trash2, Loader2, Clock, CalendarDays} from 'lucide-react'
+import {MessageSquare, Terminal, FileCode, DollarSign, Trash2, Loader2, Clock, CalendarDays, RefreshCw} from 'lucide-react'
 import {
   Pagination,
   PaginationContent,
@@ -32,6 +32,7 @@ interface TranscriptViewerProps {
   onPageChange: (page: number) => void
   onAsk?: (content: string, toolName: string, type: 'tool_use' | 'tool_result' | 'text') => void
   onDelete?: () => Promise<void>
+  onRefresh?: () => Promise<void>
   isRefreshing?: boolean
 }
 
@@ -58,6 +59,7 @@ export function TranscriptViewer({
   onPageChange,
   onAsk,
   onDelete,
+  onRefresh,
   isRefreshing = false,
 }: TranscriptViewerProps) {
   const { messages, currentPage, totalPages } = pagination
@@ -71,34 +73,47 @@ export function TranscriptViewer({
     setIsDeleting(false)
   }
 
+  const handleRefresh = async () => {
+    if (!onRefresh) return
+    await onRefresh()
+  }
+
   return (
     <div className="flex flex-col h-full">
       <Card className="mb-4">
         <CardHeader className="pb-2 flex flex-row items-start justify-between space-y-0">
-          <CardTitle className="text-lg">{session.summary}</CardTitle>
+          <CardTitle className="text-lg text-chart-1">{session.summary}</CardTitle>
           <div className="flex items-center gap-2">
-            {isRefreshing && (
-              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+            {onRefresh && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                onClick={handleRefresh}
+                disabled={isRefreshing}
+              >
+                <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+              </Button>
             )}
             {onDelete && (
               <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" disabled={isDeleting}>
-                    {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Delete session?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      This will permanently delete this session from disk. This cannot be undone.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleDelete}>Delete</AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" disabled={isDeleting}>
+                      {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete session?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This will permanently delete this session from disk. This cannot be undone.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={handleDelete}>Delete</AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
               </AlertDialog>
             )}
           </div>
@@ -169,7 +184,7 @@ export function TranscriptViewer({
 
       <ScrollArea className="flex-1">
         <div className="space-y-4 pb-4">
-          {messages.reverse().map((message) => (
+          {messages.slice().reverse().map((message) => (
             <MessageBlock key={message.uuid} message={message} onAsk={onAsk} />
           ))}
         </div>

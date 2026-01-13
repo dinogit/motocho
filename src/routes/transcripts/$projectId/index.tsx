@@ -20,7 +20,7 @@ import {
   PageHeader,
   PageHeaderContent,
   PageTitle,
-  PageDescription,
+  PageDescription, PageHeaderSeparator,
 } from '@/shared/components/page/page-header'
 
 function decodeProjectName(encodedName: string): string {
@@ -83,12 +83,11 @@ function PageComponent() {
     <>
       <PageHeader>
         <PageHeaderContent>
-          <div>
-            <PageTitle>{projectName}</PageTitle>
-            <PageDescription>
-              Project efficiency and session history
-            </PageDescription>
-          </div>
+          <PageTitle>{projectName}</PageTitle>
+          <PageHeaderSeparator />
+          <PageDescription>
+            Project efficiency and session history
+          </PageDescription>
         </PageHeaderContent>
       </PageHeader>
       <div className="flex flex-col gap-6 p-6">

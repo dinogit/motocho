@@ -76,22 +76,18 @@ export function Page() {
 
     setIsCopying(true)
     try {
-      const result = await bulkCopy({
-        data: {
-          items: selectedItems.map((i) => ({
-            type: i.type,
-            sourcePath: i.path,
-            sourceProject: i.sourceProject,
-          })),
-          destinationProject,
-        },
-      })
+      const items = selectedItems.map((i) => ({
+        type: (i.type === 'claude-md' ? 'claude_md' : i.type) as 'skill' | 'claude_md',
+        source: i.path,
+        sourceProject: i.sourceProject,
+      }))
+      const result = await bulkCopy(items, destinationProject)
 
-      if (result.copied > 0) {
-        toast.success(`Copied ${result.copied} item(s)`)
+      if (result && result.copiedCount > 0) {
+        toast.success(`Copied ${result.copiedCount} item(s)`)
       }
-      if (result.errors.length > 0) {
-        result.errors.forEach((err) => toast.error(err))
+      if (result && result.failedItems.length > 0) {
+        result.failedItems.forEach((err: string) => toast.error(err))
       }
 
       clearSelection()

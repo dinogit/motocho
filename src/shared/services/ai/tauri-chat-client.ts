@@ -5,7 +5,7 @@
  * Streams chat responses via Tauri events instead of SSE.
  */
 
-import { getTauriInvoke } from '../tauri-invoke'
+import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 
 // ============================================================================
@@ -42,8 +42,6 @@ export async function startChat(
   projectId?: string,
   sessionId?: string,
 ): Promise<AsyncIterable<string>> {
-  const invoke = await getTauriInvoke()
-
   // Start the chat command (returns a promise)
   const chatPromise = invoke<string>('start_chat', {
     messages,
@@ -101,8 +99,6 @@ export async function streamChat(
     onError?: (error: string) => void
   },
 ): Promise<string> {
-  const invoke = await getTauriInvoke()
-
   // Listen for events
   const unlistenText = await listen<ChatStreamEvent>('chat-stream', (event) => {
     switch (event.payload.type) {
@@ -147,22 +143,24 @@ export function createStreamFromChat(
   messages: ChatMessage[],
   context?: string,
 ): ReadableStream<string> {
-  return new ReadableStream<string>(async (controller) => {
-    try {
-      await streamChat(messages, {
-        context,
-        onText: (chunk) => {
-          controller.enqueue(chunk)
-        },
-        onComplete: () => {
-          controller.close()
-        },
-        onError: (error) => {
-          controller.error(new Error(error))
-        },
-      })
-    } catch (error) {
-      controller.error(error)
-    }
+  return new ReadableStream<string>({
+    async start(controller) {
+      try {
+        await streamChat(messages, {
+          context,
+          onText: (chunk) => {
+            controller.enqueue(chunk)
+          },
+          onComplete: () => {
+            controller.close()
+          },
+          onError: (error) => {
+            controller.error(new Error(error))
+          },
+        })
+      } catch (error) {
+        controller.error(error)
+      }
+    },
   })
 }

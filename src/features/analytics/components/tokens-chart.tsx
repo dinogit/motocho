@@ -54,7 +54,7 @@ export function TokensChart({ data }: TokensChartProps) {
             <Line
               type="monotone"
               dataKey="tokens"
-              stroke="var(--color-tokens)"
+              stroke="var(--chart-4)"
               strokeWidth={2}
               dot={false}
             />

@@ -13,7 +13,7 @@ export const Route = createFileRoute('/settings/')({
     ])
 
     // Get all projects
-    const allProjects = skills.allProjects
+    const allProjects = skills?.allProjects || []
 
     // Load settings for each project
     const projectSettings = await Promise.all(
