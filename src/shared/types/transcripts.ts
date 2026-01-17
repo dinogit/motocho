@@ -26,6 +26,7 @@ export interface Session {
     durationMs?: number
     startTimestamp?: string
     endTimestamp?: string
+    gitBranch?: string
   }
 }
 
@@ -172,4 +173,5 @@ export interface SessionStats {
   durationMs: number
   startTimestamp?: string
   endTimestamp?: string
+  gitBranch?: string
 }

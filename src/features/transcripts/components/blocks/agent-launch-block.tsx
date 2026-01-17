@@ -130,17 +130,17 @@ export function AgentLaunchBlock({ input, projectId, sessionId, agentId: propsAg
                                         onClick={() => handleViewWorkshop(effectiveAgentId)}
                                     >
                                         <Activity className="h-4 w-4" />
-                                        View Workshop Activity
+                                        Agent Activity
                                     </Button>
                                 </SheetTrigger>
-                                <SheetContent className="sm:max-w-2xl w-full p-0 flex flex-col">
+                                <SheetContent className="sm:max-w-7xl w-full p-0 flex flex-col">
                                     <SheetHeader className="p-6 pb-2">
                                         <SheetTitle className="flex items-center gap-2">
                                             <Bot className="h-5 w-5 text-sky-500" />
-                                            Workshop Activity: {displayType}
+                                            Agent Activity: {displayType}
                                         </SheetTitle>
                                     </SheetHeader>
-                                    <ScrollArea className="flex-1 px-6 pb-6 border-t">
+                                    <ScrollArea className="flex-1 px-6 pb-6 border-t overflow-scroll">
                                         {isLoadingWorkshop ? (
                                             <div className="flex items-center justify-center py-20">
                                                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />

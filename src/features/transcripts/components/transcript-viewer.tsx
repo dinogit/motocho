@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { MessageBlock } from './message-block'
 import { StandaloneProgressBlock } from './blocks/standalone-progress-block'
-import { MessageSquare, Terminal, FileCode, DollarSign, Trash2, Loader2, Clock, CalendarDays, RefreshCw } from 'lucide-react'
+import { MessageSquare, Terminal, FileCode, DollarSign, Trash2, Loader2, Clock, CalendarDays, RefreshCw, GitBranch } from 'lucide-react'
 import {
   Pagination,
   PaginationContent,
@@ -176,6 +176,15 @@ export function TranscriptViewer({
           {/* Metadata row */}
           <div className="flex items-center gap-4 text-xs text-muted-foreground">
             <span className="font-mono">{session.id.slice(0, 12)}</span>
+            {stats?.gitBranch && (
+              <>
+                <span>·</span>
+                <span className="flex items-center gap-1">
+                  <GitBranch className="h-3 w-3" />
+                  {stats.gitBranch}
+                </span>
+              </>
+            )}
             <span className="ml-auto">
               Page {currentPage} of {totalPages}
             </span>

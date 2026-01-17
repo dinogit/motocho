@@ -69,6 +69,8 @@ pub struct SessionStats {
     pub start_timestamp: Option<String>,
     #[serde(rename = "endTimestamp")]
     pub end_timestamp: Option<String>,
+    #[serde(rename = "gitBranch")]
+    pub git_branch: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -495,8 +497,16 @@ fn calculate_session_stats(entries: &[RawLogEntry], total_cost: f64) -> SessionS
     let mut tool_call_count = 0;
     let mut first_timestamp: Option<DateTime<Utc>> = None;
     let mut last_timestamp: Option<DateTime<Utc>> = None;
+    let mut git_branch: Option<String> = None;
 
     for entry in entries {
+        // Extract git branch from first entry that has it
+        if git_branch.is_none() {
+            if let Some(branch) = entry._extra.get("gitBranch").and_then(|v| v.as_str()) {
+                git_branch = Some(branch.to_string());
+            }
+        }
+
         // Track timestamps for duration
         if let Ok(ts) = DateTime::parse_from_rfc3339(&entry.timestamp) {
             let ts_utc = ts.with_timezone(&Utc);
@@ -545,6 +555,7 @@ fn calculate_session_stats(entries: &[RawLogEntry], total_cost: f64) -> SessionS
         duration_ms,
         start_timestamp,
         end_timestamp,
+        git_branch,
     }
 }
 
