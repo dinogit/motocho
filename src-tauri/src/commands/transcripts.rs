@@ -1206,7 +1206,12 @@ pub async fn get_agent_transcript(project_id: String, session_id: String, agent_
     eprintln!("[get_agent_transcript] Extracted {} messages", messages.len());
 
     if messages.is_empty() {
-        return Err(format!("No workshop activity found for agent: {}", agent_id));
+        return Err(format!(
+            "No workshop activity found for agent: {}. Debug: progress_entries={}, matching_tool_ids={}",
+            agent_id,
+            progress_count,
+            matching_tool_ids.len()
+        ));
     }
 
     Ok(messages)
