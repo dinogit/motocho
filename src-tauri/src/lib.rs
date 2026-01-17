@@ -62,6 +62,7 @@ pub fn run() {
       get_session_paginated,
       get_project_stats,
       delete_session,
+      get_agent_transcript,
       // Plans commands
       get_plans,
       get_plan_by_id,
