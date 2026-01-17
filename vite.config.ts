@@ -1,23 +1,10 @@
-// import { defineConfig } from 'vite'
 
-// import { TanStackRouterVite } from '@tanstack/router-plugin/vite'
-//
-// export default defineConfig({
-//   server: {
-//     port: 9999,
-//   },
-//   plugins: [
-//     tsConfigPaths(),
-//     TanStackRouterVite(),
-//     viteReact(),
-//     tailwindcss(),
-//   ],
-// })
 
 import { defineConfig } from 'vite';
 import tsConfigPaths from 'vite-tsconfig-paths'
 import viteReact from '@vitejs/plugin-react'
 import tailwindcss from "@tailwindcss/vite";
+import { tanstackRouter } from '@tanstack/router-plugin/vite'
 
 const host = process.env.TAURI_DEV_HOST;
 
@@ -46,6 +33,10 @@ export default defineConfig({
   },
     plugins: [
     tsConfigPaths(),
+      tanstackRouter({
+        target: 'react',
+        autoCodeSplitting: true,
+      }),
     viteReact(),
     tailwindcss(),
   ],

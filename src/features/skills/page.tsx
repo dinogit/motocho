@@ -11,8 +11,8 @@ import { Copy, Loader2, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { StatsCards } from './components/stats-cards'
 import { ProjectSection } from './components/project-section'
-import type { SkillsDashboardData } from '@/shared/services/skills/types'
-import { bulkCopy } from '@/shared/services/skills/client'
+import type { SkillsDashboardData } from '@/shared/types/skills'
+import { getSkillsData, bulkCopy } from '@/shared/services/skills/client'
 import {
   PageHeader,
   PageHeaderContent,

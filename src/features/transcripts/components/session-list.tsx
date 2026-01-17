@@ -2,7 +2,7 @@ import { Link } from '@tanstack/react-router'
 import { formatDistanceToNow } from 'date-fns'
 import { Clock, FileText, MessageSquare, Terminal, FileCode } from 'lucide-react'
 import { Card, CardHeader, CardTitle, CardContent } from '@/shared/components/ui/card'
-import type { Session } from '@/shared/services/transcripts/types'
+import type { Session } from '@/shared/types/transcripts'
 
 interface SessionListProps {
   sessions: Session[]

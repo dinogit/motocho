@@ -1,4 +1,4 @@
-import type { ContentBlock } from '@/shared/services/transcripts/types'
+import type { ContentBlock } from '@/shared/types/transcripts'
 import { TextBlockRenderer } from './blocks/text-block'
 import { ToolUseBlockRenderer } from './blocks/tool-use-block'
 import { ToolResultBlockRenderer } from './blocks/tool-result-block'
@@ -7,18 +7,24 @@ import { ImageBlockRenderer } from './blocks/image-block'
 
 interface ContentBlockRendererProps {
   block: ContentBlock
+  projectId?: string
+  sessionId?: string
 }
 
-export function ContentBlockRenderer({ block }: ContentBlockRendererProps) {
+export function ContentBlockRenderer({ block, projectId, sessionId }: ContentBlockRendererProps) {
   switch (block.type) {
     case 'text':
-      return <TextBlockRenderer text={block.text} />
+      return <TextBlockRenderer text={block.text || ''} />
 
     case 'tool_use':
       return (
         <ToolUseBlockRenderer
-          name={block.name}
-          input={block.input}
+          name={block.name || 'Unknown Tool'}
+          input={block.input || {}}
+          progress={block.progress}
+          projectId={projectId}
+          sessionId={sessionId}
+          agentId={(block as any).agentId}
         />
       )
 
@@ -31,7 +37,7 @@ export function ContentBlockRenderer({ block }: ContentBlockRendererProps) {
       )
 
     case 'thinking':
-      return <ThinkingBlockRenderer thinking={block.thinking} />
+      return <ThinkingBlockRenderer thinking={block.thinking || ''} />
 
     case 'image':
       return <ImageBlockRenderer source={block.source} />

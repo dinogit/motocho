@@ -13,16 +13,35 @@ import {
   Wrench,
   Bot,
   HelpCircle,
+  Activity,
+  CheckCircle2,
+  Loader2,
 } from 'lucide-react'
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from '@/shared/components/ui/sheet'
 import { Button } from '@/shared/components/ui/button'
 import { Badge } from '@/shared/components/ui/badge'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/shared/components/ui/collapsible'
 import { ClientOnly } from '@/shared/components/client-only'
 import { cn } from '@/shared/lib/utils'
+import { getAgentTranscript } from '@/shared/services/transcripts/client'
+import { AgentLaunchBlock } from './agent-launch-block'
+import { MessageBlock } from '../message-block'
+import { ScrollArea } from '@/shared/components/ui/scroll-area'
+import type { AgentProgressData, Message } from '@/shared/types/transcripts'
 
 interface ToolUseBlockRendererProps {
   name: string
-  input: Record<string, unknown>
+  input: Record<string, any>
+  progress?: AgentProgressData[]
+  projectId?: string
+  sessionId?: string
+  agentId?: string
 }
 
 const TOOL_ICONS: Record<string, React.ElementType> = {
@@ -40,17 +59,17 @@ const TOOL_ICONS: Record<string, React.ElementType> = {
 }
 
 const TOOL_COLORS: Record<string, string> = {
-  Bash: 'bg-green-500/10 border-green-500/30 text-green-700',
-  Edit: 'bg-blue-500/10 border-blue-500/30 text-blue-700',
-  Write: 'bg-purple-500/10 border-purple-500/30 text-purple-700',
-  Read: 'bg-gray-500/10 border-gray-500/30 text-gray-700',
-  Grep: 'bg-orange-500/10 border-orange-500/30 text-orange-700',
-  Glob: 'bg-cyan-500/10 border-cyan-500/30 text-cyan-700',
-  TodoWrite: 'bg-pink-500/10 border-pink-500/30 text-pink-700',
-  WebFetch: 'bg-indigo-500/10 border-indigo-500/30 text-indigo-700',
-  WebSearch: 'bg-indigo-500/10 border-indigo-500/30 text-indigo-700',
-  Task: 'bg-violet-500/10 border-violet-500/30 text-violet-700',
-  AskUserQuestion: 'bg-amber-500/10 border-amber-500/30 text-amber-700',
+  Bash: 'bg-green-500/10 border-green-500/30 text-green-900 dark:text-green-300',
+  Edit: 'bg-blue-500/10 border-blue-500/30 text-blue-900 dark:text-blue-300',
+  Write: 'bg-purple-500/10 border-purple-500/30 text-purple-900 dark:text-purple-300',
+  Read: 'bg-gray-500/10 border-gray-500/30 text-gray-900 dark:text-gray-300',
+  Grep: 'bg-orange-500/10 border-orange-500/30 text-orange-900 dark:text-orange-300',
+  Glob: 'bg-cyan-500/10 border-cyan-500/30 text-cyan-900 dark:text-cyan-300',
+  TodoWrite: 'bg-pink-500/10 border-pink-500/30 text-pink-900 dark:text-pink-300',
+  WebFetch: 'bg-indigo-500/10 border-indigo-500/30 text-indigo-900 dark:text-indigo-300',
+  WebSearch: 'bg-indigo-500/10 border-indigo-500/30 text-indigo-900 dark:text-indigo-300',
+  Task: 'bg-violet-500/10 border-violet-500/30 text-violet-900 dark:text-violet-300',
+  AskUserQuestion: 'bg-amber-500/10 border-amber-500/30 text-amber-300 dark:text-amber-300',
 }
 
 // Sub-agent type descriptions
@@ -60,9 +79,31 @@ const SUBAGENT_DESCRIPTIONS: Record<string, string> = {
   'Plan': 'Software architect for designing implementation plans',
   'claude-code-guide': 'Agent for answering questions about Claude Code',
   'statusline-setup': 'Agent to configure status line settings',
+  'code-simplifier': 'Agent for code simplification and refactoring',
+  'engineer': 'General software engineering agent',
+  'Bash': 'Agent for executing shell commands and scripts',
 }
 
-export function ToolUseBlockRenderer({ name, input }: ToolUseBlockRendererProps) {
+function getDisplayType(type: string) {
+  if (type.includes(':')) {
+    const [name, id] = type.split(':')
+    if (name.toLowerCase() === id.toLowerCase()) return name
+  }
+  return type
+}
+
+export function ToolUseBlockRenderer({ name, input, progress, projectId, sessionId, agentId }: ToolUseBlockRendererProps) {
+  if (name === 'Task') {
+    return (
+      <AgentLaunchBlock
+        input={input}
+        projectId={projectId}
+        sessionId={sessionId}
+        agentId={agentId}
+      />
+    )
+  }
+
   const Icon = TOOL_ICONS[name] || Wrench
   const colorClass = TOOL_COLORS[name] || 'bg-muted border-border'
 
@@ -80,40 +121,109 @@ export function ToolUseBlockRenderer({ name, input }: ToolUseBlockRendererProps)
 
   return (
     <ClientOnly fallback={fallback}>
-      <ToolUseCollapsible name={name} input={input} />
+      <ToolUseCollapsible name={name} input={input} progress={progress} projectId={projectId} sessionId={sessionId} agentId={agentId} />
     </ClientOnly>
   )
 }
 
-function ToolUseCollapsible({ name, input }: ToolUseBlockRendererProps) {
+function ToolUseCollapsible({ name, input, progress, projectId, sessionId, agentId: propsAgentId }: ToolUseBlockRendererProps) {
   const [isOpen, setIsOpen] = useState(false)
+  const [agentTranscript, setAgentTranscript] = useState<Message[]>([])
+  const [isLoadingTranscript, setIsLoadingTranscript] = useState(false)
+  const [isSheetOpen, setIsSheetOpen] = useState(false)
+
   const Icon = TOOL_ICONS[name] || Wrench
   const colorClass = TOOL_COLORS[name] || 'bg-muted border-border'
+
+  // Determine agentId (from props, progress, or input)
+  const effectiveAgentId = propsAgentId || progress?.find(p => p.agentId)?.agentId || (input as any).agentId
+
+  const handleViewWorkshop = async (id: string) => {
+    if (!projectId || !sessionId) return
+    setIsLoadingTranscript(true)
+    setIsSheetOpen(true)
+    try {
+      const messages = await getAgentTranscript(projectId, sessionId, id)
+      setAgentTranscript(messages)
+    } finally {
+      setIsLoadingTranscript(false)
+    }
+  }
 
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
       <div className={cn('rounded-md border', colorClass)}>
         <CollapsibleTrigger asChild>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="w-full justify-start gap-2 h-auto py-2 px-3 hover:bg-black/5"
-          >
-            <Icon className="h-4 w-4" />
-            <span className="text-xs font-medium">{name}</span>
-            {renderToolSummary(name, input)}
-            <div className="ml-auto flex items-center gap-1 shrink-0">
-              {isOpen ? (
-                <ChevronDown className="h-3 w-3" />
-              ) : (
-                <ChevronRight className="h-3 w-3" />
+          <div className="flex items-center w-full hover:bg-black/5 cursor-pointer">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="flex-1 justify-start gap-2 h-auto py-2 px-3 hover:bg-transparent"
+            >
+              <Icon className="h-4 w-4" />
+              <span className="text-xs font-medium">{name}</span>
+              {renderToolSummary(name, input)}
+            </Button>
+
+            <div className="flex items-center gap-2 px-3 shrink-0">
+              {name === 'Task' && effectiveAgentId && (
+                <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
+                  <SheetTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2 text-[10px] text-violet-600 hover:text-violet-700 hover:bg-violet-500/10 flex items-center gap-1 font-semibold border border-violet-500/20"
+                      onClick={(e) => {
+                        e.stopPropagation() // Don't collapse/expand
+                        handleViewWorkshop(effectiveAgentId)
+                      }}
+                    >
+                      <Bot className="h-3 w-3" />
+                      View Workshop Activity
+                    </Button>
+                  </SheetTrigger>
+                  <SheetContent className="sm:max-w-2xl w-full p-0 flex flex-col">
+                    <SheetHeader className="p-6 pb-2">
+                      <SheetTitle className="flex items-center gap-2">
+                        <Bot className="h-5 w-5 text-violet-500" />
+                        Sub-agent Workshop: {getDisplayType(effectiveAgentId)}
+                      </SheetTitle>
+                    </SheetHeader>
+                    <ScrollArea className="flex-1 px-6 pb-6 border-t">
+                      {isLoadingTranscript ? (
+                        <div className="flex items-center justify-center py-20">
+                          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                        </div>
+                      ) : agentTranscript.length > 0 ? (
+                        <div className="space-y-6 pt-4">
+                          {agentTranscript.map((msg) => (
+                            <MessageBlock key={msg.uuid} message={msg} projectId={projectId} sessionId={sessionId} />
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-center py-20 text-muted-foreground">
+                          <p>No activity details found for this sub-agent.</p>
+                          <p className="text-[10px] mt-2">Checked ID: {effectiveAgentId}</p>
+                        </div>
+                      )}
+                    </ScrollArea>
+                  </SheetContent>
+                </Sheet>
               )}
+
+              <div className="w-4 h-4 flex items-center justify-center">
+                {isOpen ? (
+                  <ChevronDown className="h-3 w-3" />
+                ) : (
+                  <ChevronRight className="h-3 w-3" />
+                )}
+              </div>
             </div>
-          </Button>
+          </div>
         </CollapsibleTrigger>
 
         <CollapsibleContent>
-          <div className="px-3 pb-3 space-y-2">
+          <div className="px-3 pb-3 space-y-3">
             {renderToolInput(name, input)}
           </div>
         </CollapsibleContent>
@@ -122,7 +232,7 @@ function ToolUseCollapsible({ name, input }: ToolUseBlockRendererProps) {
   )
 }
 
-function renderToolSummary(name: string, input: Record<string, unknown>): React.ReactNode {
+function renderToolSummary(name: string, input: Record<string, any>): React.ReactNode {
   switch (name) {
     case 'Bash':
       return (
@@ -150,17 +260,10 @@ function renderToolSummary(name: string, input: Record<string, unknown>): React.
           {String(input.pattern || '')}
         </code>
       )
-    case 'Task':
-      const agentType = String(input.subagent_type || 'unknown')
-      return (
-        <Badge variant="outline" className="text-[10px] py-0 bg-violet-500/20 text-violet-800 border-violet-500/40">
-          {agentType}
-        </Badge>
-      )
     case 'AskUserQuestion':
       return (
         <span className="text-[10px] text-muted-foreground truncate max-w-[300px]">
-          {String((input.questions as Array<{question: string}>)?.[0]?.question || '').slice(0, 40)}...
+          {String((input.questions as Array<{ question: string }>)?.[0]?.question || '').slice(0, 40)}...
         </span>
       )
     default:
@@ -168,7 +271,7 @@ function renderToolSummary(name: string, input: Record<string, unknown>): React.
   }
 }
 
-function renderToolInput(name: string, input: Record<string, unknown>): React.ReactNode {
+function renderToolInput(name: string, input: Record<string, any>): React.ReactNode {
   switch (name) {
     case 'Bash':
       return (
@@ -257,46 +360,6 @@ function renderToolInput(name: string, input: Record<string, unknown>): React.Re
               <span>{todo.content}</span>
             </div>
           ))}
-        </div>
-      )
-
-    case 'Task':
-      const subagentType = String(input.subagent_type || 'unknown')
-      const description = SUBAGENT_DESCRIPTIONS[subagentType] || 'Unknown agent type'
-      return (
-        <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            <Badge variant="outline" className="text-[10px] bg-violet-500/20 text-violet-800 border-violet-500/40">
-              <Bot className="h-3 w-3 mr-1" />
-              {subagentType}
-            </Badge>
-            <span className="text-xs text-muted-foreground">{description}</span>
-          </div>
-          {input.description !== undefined && (
-            <div className="text-xs">
-              <span className="text-muted-foreground">Task: </span>
-              <span>{String(input.description)}</span>
-            </div>
-          )}
-          {input.model !== undefined && (
-            <div className="text-xs">
-              <span className="text-muted-foreground">Model: </span>
-              <code className="bg-black/10 px-1 rounded">{String(input.model)}</code>
-            </div>
-          )}
-          {input.run_in_background === true && (
-            <Badge variant="outline" className="text-[10px] bg-blue-500/10 text-blue-700">
-              Running in background
-            </Badge>
-          )}
-          {input.prompt !== undefined && (
-            <div>
-              <span className="text-xs text-muted-foreground">Prompt:</span>
-              <pre className="bg-black/10 rounded p-2 text-xs font-mono overflow-x-auto mt-1 max-h-[200px]">
-                {String(input.prompt)}
-              </pre>
-            </div>
-          )}
         </div>
       )
 

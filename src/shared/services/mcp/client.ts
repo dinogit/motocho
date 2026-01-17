@@ -4,7 +4,7 @@
  */
 
 import { invoke } from '@tauri-apps/api/core'
-import type { McpDashboardData, McpServerConfig, ProjectRef } from './types'
+import type { McpDashboardData, McpServerConfig, ProjectRef } from '@/shared/types/mcp'
 
 /**
  * Get all MCP configuration and plugin data

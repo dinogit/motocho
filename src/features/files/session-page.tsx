@@ -17,7 +17,7 @@ import {
 import { Card, CardContent } from '@/shared/components/ui/card'
 import { Badge } from '@/shared/components/ui/badge'
 import { FileIcon, ClockIcon, PencilIcon, FilePlusIcon, ChevronRightIcon } from 'lucide-react'
-import type { SessionFileChanges, FileChange } from '@/shared/services/files/types'
+import type { SessionFileChanges, FileChange } from '@/shared/types/files'
 
 function formatTime(date: Date): string {
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })

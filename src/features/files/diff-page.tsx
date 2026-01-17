@@ -19,7 +19,7 @@ import { Badge } from '@/shared/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/components/ui/tabs'
 import { ScrollArea } from '@/shared/components/ui/scroll-area'
 import { FileIcon, PencilIcon, FilePlusIcon, ArrowLeftIcon } from 'lucide-react'
-import type { FileDiff } from '@/shared/services/files/types'
+import type { FileDiff } from '@/shared/types/files'
 import { useMemo } from 'react'
 
 function formatDateTime(date: Date): string {

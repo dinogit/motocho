@@ -8,7 +8,7 @@ import { Link } from '@tanstack/react-router'
 import { FileText, Calendar, ArrowRight } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui/card'
 import { Route } from '@/routes/plans/index'
-import type { PlanSummary } from '@/shared/services/plans/types'
+import type { PlanSummary } from '@/shared/types/plans'
 
 export function PlansPage() {
   const { plans } = Route.useLoaderData() as { plans: PlanSummary[] }

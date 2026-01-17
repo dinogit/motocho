@@ -4,7 +4,7 @@
  */
 
 import { invoke } from '@tauri-apps/api/core'
-import type { SkillsDashboardData, Skill, BulkCopyItem, BulkCopyResult } from './types'
+import type { SkillsDashboardData, Skill, BulkCopyItem, BulkCopyResult } from '@/shared/types/skills'
 
 /**
  * Get all skills data for the dashboard

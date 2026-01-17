@@ -8,15 +8,25 @@
  * - {project}/CLAUDE.md (project instructions)
  * - {project}/.claude/skills/ (project skills)
  *
- * The loader runs on the server and returns all skills data
+ * - {project}/.claude/mcp/ (project mcp data)
+ *
+ * The loader runs on the server and returns all mcp data
  * which is then rendered by the Page component.
  */
 
 import { createFileRoute } from '@tanstack/react-router'
+import { invoke } from '@tauri-apps/api/core'
 import { Page } from '@/features/skills/page'
-import { getSkillsData } from '@/shared/services/skills/client'
+import type { SkillsDashboardData } from '@/shared/types/skills'
 
 export const Route = createFileRoute('/skills')({
-  loader: () => getSkillsData(),
+  loader: async () => {
+    try {
+      return await invoke<SkillsDashboardData>('get_skills_data')
+    } catch (error) {
+      console.error('Failed to get skills data:', error)
+      return null
+    }
+  },
   component: Page,
 })

@@ -4,7 +4,7 @@
  */
 
 import { invoke } from '@tauri-apps/api/core'
-import type { Plan, PlanSummary } from './types'
+import type { Plan, PlanSummary } from '@/shared/types/plans'
 
 /**
  * Get all plans from ~/.claude/plans/

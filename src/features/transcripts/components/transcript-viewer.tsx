@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { MessageBlock } from './message-block'
-import {MessageSquare, Terminal, FileCode, DollarSign, Trash2, Loader2, Clock, CalendarDays, RefreshCw} from 'lucide-react'
+import { StandaloneProgressBlock } from './blocks/standalone-progress-block'
+import { MessageSquare, Terminal, FileCode, DollarSign, Trash2, Loader2, Clock, CalendarDays, RefreshCw } from 'lucide-react'
 import {
   Pagination,
   PaginationContent,
@@ -24,7 +25,7 @@ import {
   AlertDialogTrigger,
 } from '@/shared/components/ui/alert-dialog'
 import { ScrollArea } from '@/shared/components/ui/scroll-area'
-import type { Session, PaginatedMessages } from '@/shared/services/transcripts/types'
+import type { Session, PaginatedMessages } from '@/shared/types/transcripts'
 
 interface TranscriptViewerProps {
   session: Session
@@ -97,23 +98,23 @@ export function TranscriptViewer({
             )}
             {onDelete && (
               <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" disabled={isDeleting}>
-                      {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Delete session?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        This will permanently delete this session from disk. This cannot be undone.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction onClick={handleDelete}>Delete</AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
+                <AlertDialogTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" disabled={isDeleting}>
+                    {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Delete session?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will permanently delete this session from disk. This cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleDelete}>Delete</AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
               </AlertDialog>
             )}
           </div>
@@ -147,7 +148,7 @@ export function TranscriptViewer({
                   </span>
                 </>
               )}
-              {stats.durationMs > 0 && (
+              {stats.durationMs !== undefined && stats.durationMs > 0 && (
                 <>
                   <span>·</span>
                   <span className="flex items-center gap-1.5">
@@ -163,12 +164,12 @@ export function TranscriptViewer({
             <div className="text-xs text-muted-foreground flex flex-row gap-2">
               <div className="flex items-center gap-1">
                 <CalendarDays className="h-4 w-4" />
-                Start: {new Date(stats.startTimestamp).toLocaleString()}
+                Start: {new Date(stats.startTimestamp as string).toLocaleString()}
               </div>
               <span> - </span>
               <div className="flex items-center gap-1">
                 <CalendarDays className="h-4 w-4" />
-                End: {new Date(stats.endTimestamp).toLocaleString()}
+                End: {new Date(stats.endTimestamp as string).toLocaleString()}
               </div>
             </div>
           )}
@@ -184,9 +185,25 @@ export function TranscriptViewer({
 
       <ScrollArea className="flex-1">
         <div className="space-y-4 pb-4">
-          {messages.slice().reverse().map((message) => (
-            <MessageBlock key={message.uuid} message={message} onAsk={onAsk} />
-          ))}
+          {messages.slice().reverse().map((message) => {
+            if (message.type === 'progress') {
+              const progressBlock = message.content.find(b => b.type === 'progress')
+              if (progressBlock) {
+                return (
+                  <StandaloneProgressBlock
+                    key={message.uuid}
+                    text={progressBlock.text || ''}
+                    agentId={progressBlock.agentId}
+                    timestamp={message.timestamp}
+                    toolUseID={progressBlock.toolUseID}
+                  />
+                )
+              }
+            }
+            return (
+              <MessageBlock key={message.uuid} message={message} onAsk={onAsk} projectId={session.projectId} sessionId={session.id} />
+            )
+          })}
         </div>
       </ScrollArea>
 

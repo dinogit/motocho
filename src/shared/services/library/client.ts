@@ -4,7 +4,7 @@
  */
 
 import { invoke } from '@tauri-apps/api/core'
-import type { LibrarySkill, LibrarySearchParams, SaveSkillInput } from './types'
+import type { LibrarySkill, LibrarySearchParams, SaveSkillInput } from '@/shared/types/library'
 
 /**
  * Save a new skill to the library

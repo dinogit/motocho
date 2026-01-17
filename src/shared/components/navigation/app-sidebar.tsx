@@ -34,8 +34,9 @@ import {
   SidebarMenuItem,
 } from "@/shared/components/ui/sidebar"
 import { getProjects } from "@/shared/services/transcripts/client"
-import type { Project } from "@/shared/services/transcripts/types"
-import {ModeToggle} from "@/shared/components/effects/mode-toggle.tsx";
+
+import { ModeToggle } from "@/shared/components/effects/mode-toggle.tsx";
+import type { Project } from "@/shared/types/transcripts.ts";
 
 // Static navigation items
 const staticNavItems: NavItem[] = [
@@ -80,6 +81,11 @@ const staticNavItems: NavItem[] = [
     icon: Sparkles,
   },
   {
+    title: "Agents",
+    url: "/agents",
+    icon: Bot,
+  },
+  {
     title: "Settings",
     url: "/settings",
     icon: Settings,
@@ -92,9 +98,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   useEffect(() => {
     async function loadProjects() {
       try {
-        console.log("[AppSidebar] Loading projects...")
         const projects = await getProjects()
-        console.log("[AppSidebar] Projects loaded:", projects)
 
         if (!projects || projects.length === 0) {
           console.log("[AppSidebar] No projects found")
@@ -152,7 +156,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <NavMain items={navItems} />
       </SidebarContent>
       <SidebarFooter>
-          <ModeToggle />
+        <ModeToggle />
       </SidebarFooter>
     </Sidebar>
   )

@@ -10,7 +10,7 @@
 
 import { Server, FolderOpen, Package, PackageCheck } from 'lucide-react'
 import { Card, CardContent } from '@/shared/components/ui/card'
-import type { McpStats } from '@/shared/services/mcp/types'
+import type { McpStats } from '@/shared/types/mcp'
 
 interface StatsCardsProps {
   stats: McpStats

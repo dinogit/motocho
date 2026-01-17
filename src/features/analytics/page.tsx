@@ -1,7 +1,7 @@
 import { useLoaderData } from '@tanstack/react-router'
 import { Card, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui/card'
 import { MessageSquare, Coins, Calendar, Wrench } from 'lucide-react'
-import type { StatsCache, AnalyticsSummary } from '@/shared/services/analytics/types'
+import type { StatsCache, AnalyticsSummary } from '@/shared/types/analytics'
 import { SummaryCard } from './components/summary-card'
 import { DailyActivityChart } from './components/daily-activity-chart'
 import { HourlyActivityChart } from './components/hourly-activity-chart'

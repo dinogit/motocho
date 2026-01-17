@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { ProjectList } from './components/project-list'
 import { getProjects } from '@/shared/services/transcripts/client'
-import type { Project } from '@/shared/services/transcripts/types'
+import type { Project } from '@/shared/types/transcripts'
 import {
   PageHeader,
   PageHeaderContent,

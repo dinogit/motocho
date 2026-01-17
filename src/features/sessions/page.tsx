@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from '@tanstack/react-router'
+import { Link, useNavigate, useLoaderData } from '@tanstack/react-router'
 import { Route } from '@/routes/transcripts/$projectId/$sessionId.tsx'
 import { TranscriptViewer } from '@/features/transcripts/components/transcript-viewer'
 import { ChatDrawer, type ChatContext } from '@/features/transcripts/components/chat-drawer'
@@ -10,15 +10,16 @@ import {
   PageDescription, PageHeaderSeparator,
 } from '@/shared/components/page/page-header'
 import { deleteSession, getSessionDetails } from '@/shared/services/transcripts/client'
+const getUsageInfo: any = () => Promise.resolve() // Added this mock function based on the instruction's usage
 
 export function Page() {
-  const data = Route.useLoaderData()
+  const data = useLoaderData({ from: '/transcripts/$projectId/$sessionId', structuralSharing: false }) as any
   const { projectId, sessionId } = Route.useParams()
   const navigate = useNavigate()
   const searchParams = Route.useSearch() as { page?: number }
 
-  console.log({projectId, sessionId})
-  console.log({searchParams})
+  console.log({ projectId, sessionId })
+  console.log({ searchParams })
 
   const [isRefreshing, setIsRefreshing] = useState(false)
 

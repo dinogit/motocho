@@ -1,7 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui/card'
 import { Progress } from '@/shared/components/ui/progress'
 import { PiggyBank, TrendingDown, Percent, ExternalLink } from 'lucide-react'
-import type { StatsCache } from '@/shared/services/analytics/types'
+import type { StatsCache } from '@/shared/types/analytics'
 
 // Pricing per million tokens
 const PRICING = {

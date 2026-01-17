@@ -3,7 +3,7 @@ import { formatDistanceToNow } from 'date-fns'
 import { Folder, Clock } from 'lucide-react'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/shared/components/ui/card'
 import { Badge } from '@/shared/components/ui/badge'
-import type { Project } from '@/shared/services/transcripts/types'
+import type { Project } from '@/shared/types/transcripts'
 
 interface ProjectListProps {
   projects: Project[]

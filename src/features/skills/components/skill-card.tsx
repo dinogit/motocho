@@ -40,7 +40,7 @@ import {
 } from '@/shared/components/ui/alert-dialog'
 import { Button } from '@/shared/components/ui/button'
 import { Checkbox } from '@/shared/components/ui/checkbox'
-import type { Skill } from '@/shared/services/skills/types'
+import type { Skill } from '@/shared/types/skills'
 import { copySkill, deleteSkill } from '@/shared/services/skills/client'
 import { MarkdownViewer } from './markdown-viewer'
 

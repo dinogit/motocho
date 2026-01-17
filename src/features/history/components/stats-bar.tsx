@@ -1,5 +1,5 @@
 import { MessageSquare, FolderOpen, Layers } from 'lucide-react'
-import type { HistoryStats } from '@/shared/services/history/types'
+import type { HistoryStats } from '@/shared/types/history'
 
 interface StatsBarProps {
   stats: HistoryStats

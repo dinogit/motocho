@@ -28,7 +28,7 @@ import {
   SelectValue,
 } from '@/shared/components/ui/select'
 import { addMcpServer } from '@/shared/services/mcp/client'
-import type { McpServerConfig } from '@/shared/services/mcp/types'
+import type { McpServerConfig } from '@/shared/types/mcp'
 
 interface ProjectOption {
   path: string

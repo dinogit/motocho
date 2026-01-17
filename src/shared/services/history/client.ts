@@ -4,7 +4,7 @@
  */
 
 import { invoke } from '@tauri-apps/api/core'
-import type { SearchResult, HistoryStats } from './types'
+import type { SearchResult, HistoryStats } from '@/shared/types/history'
 
 // Extended ProjectInfo type that includes count
 export interface ProjectInfo {

@@ -4,7 +4,7 @@
  */
 
 import { invoke } from '@tauri-apps/api/core'
-import type { SettingsDashboardData, ClaudeSettings, ProjectSettings } from './types'
+import type { SettingsDashboardData, ClaudeSettings, ProjectSettings } from '@/shared/types/settings'
 
 /**
  * Get settings data (global and project-specific)

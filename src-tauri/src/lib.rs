@@ -11,6 +11,7 @@ use commands::skills::*;
 use commands::ai_chat::*;
 use commands::settings::*;
 use commands::library::*;
+use commands::agents::*;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -101,6 +102,10 @@ pub fn run() {
       get_skill,
       delete_skill,
       get_library_tags,
+      // Agents commands
+      get_agents_data,
+      get_agent_by_name,
+      update_agent,
     ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");

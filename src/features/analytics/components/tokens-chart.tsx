@@ -2,7 +2,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/sha
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/shared/components/ui/chart'
 import { Line, LineChart, CartesianGrid, XAxis, YAxis } from 'recharts'
 import { Zap } from 'lucide-react'
-import type { StatsCache } from '@/shared/services/analytics/types'
+import type { StatsCache } from '@/shared/types/analytics'
 
 const chartConfig: ChartConfig = {
   tokens: { label: 'Tokens', color: 'hsl(var(--chart-4))' },

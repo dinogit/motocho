@@ -12,10 +12,9 @@
 
 import { useState, useEffect } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
+import { getProjectSessions, getProjectStats } from '@/shared/services/transcripts/client'
 import { SessionList } from '@/features/transcripts/components/session-list'
 import { ProjectStatsCards } from '@/features/projects/components/project-stats-cards'
-import { getProjectStats, getProjectSessions } from '@/shared/services/transcripts/client'
-import type { ProjectStats, Session } from '@/shared/services/transcripts/types'
 import {
   PageHeader,
   PageHeaderContent,
@@ -35,8 +34,8 @@ function decodeProjectName(encodedName: string): string {
 
 function PageComponent() {
   const { projectId } = Route.useParams()
-  const [sessions, setSessions] = useState<Session[]>([])
-  const [stats, setStats] = useState<ProjectStats | null>(null)
+  const [sessions, setSessions] = useState<any[]>([])
+  const [stats, setStats] = useState<any | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
   const projectName = decodeProjectName(projectId)
@@ -62,7 +61,7 @@ function PageComponent() {
     loadProjectData()
   }, [projectId])
 
-  console.log({stats, projectName, sessions})
+  console.log({ stats, projectName, sessions })
 
   if (isLoading) {
     return (

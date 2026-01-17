@@ -8,17 +8,30 @@ import {
 import { Button } from '@/shared/components/ui/button'
 import { ChevronLeft } from 'lucide-react'
 import { ClaudeSettingsCard } from './components/claude-settings-card'
-import { setModel, toggleThinking, clearModel } from '@/shared/services/settings/client'
+import {
+    getSettingsData,
+    updateGlobalSettings,
+    updateProjectSettings,
+} from '@/shared/services/settings/client'
+
+interface SettingsLoaderData {
+    global: ClaudeSettings
+    projects: Record<string, ProjectSettings>
+    allProjects: { path: string; name: string }[]
+}
+
 import { toggleSkill } from '@/shared/services/skills/client'
+
 import { toggleMcpServer } from '@/shared/services/mcp/client'
-import type { SettingsDashboardData } from '@/shared/services/settings/types'
-import type { SkillsDashboardData, Skill } from '@/shared/services/skills/types'
-import type { McpDashboardData, McpServer } from '@/shared/services/mcp/types'
+import { setModel, toggleThinking, clearModel } from '@/shared/services/settings/client'
+import type { SettingsDashboardData, ClaudeSettings, ProjectSettings } from '@/shared/types/settings'
+import type { SkillsDashboardData, Skill } from '@/shared/types/skills'
+import type { McpDashboardData, McpServer } from '@/shared/types/mcp'
 
 export function DetailPage() {
     const router = useRouter()
     const navigate = useNavigate()
-    const { settings, skills, mcp, projectPath, projectName } = useLoaderData({ from: '/settings/$projectId' }) as {
+    const { settings, skills, mcp, projectPath, projectName } = useLoaderData({ from: '/settings/$projectId', structuralSharing: false }) as {
         settings: SettingsDashboardData
         skills: SkillsDashboardData
         mcp: McpDashboardData
@@ -83,8 +96,8 @@ export function DetailPage() {
             </PageHeader>
             <ClaudeSettingsCard
                 projectPath={projectPath}
-                currentModel={settings.projectSettings?.model || settings.globalSettings.model}
-                thinkingEnabled={settings.globalSettings.alwaysThinkingEnabled ?? false}
+                currentModel={settings.projects[projectPath]?.model || settings.global.model}
+                thinkingEnabled={settings.global.thinking || false}
                 skills={projectSkills}
                 mcpServers={projectMcpServers}
                 onModelChange={handleModelChange}

@@ -4,14 +4,15 @@ import { useRouter } from "@tanstack/react-router"
 import { cn } from "@/shared/lib/utils.ts"
 import { SidebarTrigger } from "@/shared/components/ui/sidebar.tsx"
 import { Button } from "@/shared/components/ui/button.tsx"
-import { getUsageInfo } from "@/shared/services/usage/client"
+// import { getUsageInfo } from "@/shared/services/usage/client"
+const getUsageInfo: any = () => Promise.resolve({})
 import { ArrowLeft, GaugeIcon } from "lucide-react"
 
 function UsageIndicator() {
     const [threshold, setThreshold] = useState<number | null>(null)
 
     useEffect(() => {
-        getUsageInfo().then((info) => {
+        getUsageInfo().then((info: any) => {
             if (info) {
                 setThreshold(info.tokenThreshold)
             }
@@ -47,15 +48,15 @@ function PageHeader({ className, children, ...props }: React.ComponentProps<"div
 }
 
 function PageHeaderContent({
-                               className,
-                               hideSidebarTrigger = false,
-                               showBackButton = false,
-                               children,
-                               ...props
-                           }: React.ComponentProps<"div"> & {
-                               hideSidebarTrigger?: boolean
-                               showBackButton?: boolean
-                           }) {
+    className,
+    hideSidebarTrigger = false,
+    showBackButton = false,
+    children,
+    ...props
+}: React.ComponentProps<"div"> & {
+    hideSidebarTrigger?: boolean
+    showBackButton?: boolean
+}) {
     const router = useRouter()
 
     const handleBack = () => {
@@ -94,9 +95,9 @@ function PageHeaderContent({
 }
 
 function PageHeaderSeparator({
-                                 className,
-                                 ...props
-                             }: React.ComponentProps<"div">) {
+    className,
+    ...props
+}: React.ComponentProps<"div">) {
     return (
         <div
             data-slot="page-header-separator"

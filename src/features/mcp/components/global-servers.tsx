@@ -21,7 +21,7 @@ import {
   CardTitle,
 } from '@/shared/components/ui/card'
 import { ServerCard } from './server-card'
-import type { McpServer } from '@/shared/services/mcp/types'
+import type { McpServer } from '@/shared/types/mcp'
 
 interface ProjectOption {
   path: string

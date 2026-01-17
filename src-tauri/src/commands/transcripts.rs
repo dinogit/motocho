@@ -8,6 +8,7 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 use tokio::io::{AsyncBufReadExt, BufReader};
@@ -233,7 +234,7 @@ fn decode_project_name(encoded_name: &str) -> String {
         let decoded = encoded_name
             .chars()
             .enumerate()
-            .map(|(i, c)| if c == '-' { '/' } else { c })
+            .map(|(_, c)| if c == '-' { '/' } else { c })
             .collect::<String>();
 
         let parts: Vec<&str> = decoded.split('/').filter(|s| !s.is_empty()).collect();
@@ -433,6 +434,59 @@ fn calculate_manual_cost(model: &str, usage: &RawUsage) -> f64 {
     let cache_read_cost = (usage.cache_read_input_tokens as f64 / 1_000_000.0) * cache_read_rate;
 
     input_cost + output_cost + cache_write_cost + cache_read_cost
+}
+
+fn extract_agent_id(value: &Value) -> Option<String> {
+    match value {
+        Value::String(s) => {
+            // Regex-like manual scan for agent-([a-f0-9]+)
+            if let Some(pos) = s.find("agent-") {
+                let start = pos;
+                let mut end = start + 6;
+                while end < s.len() && s.as_bytes()[end].is_ascii_hexdigit() {
+                    end += 1;
+                }
+                if end > start + 6 {
+                    return Some(s[start..end].to_string());
+                }
+            }
+            // Check for Agent ID: XXXX
+            if let Some(pos) = s.to_lowercase().find("agent id") {
+                let s_after = &s[pos + 8..];
+                let hex_start = s_after.find(|c: char| c.is_ascii_hexdigit())?;
+                let mut end = hex_start;
+                while end < s_after.len() && s_after.as_bytes()[end].is_ascii_hexdigit() {
+                    end += 1;
+                }
+                if end > hex_start {
+                    let id = &s_after[hex_start..end];
+                    return Some(if id.starts_with("agent-") { id.to_string() } else { format!("agent-{}", id) });
+                }
+            }
+            None
+        }
+        Value::Object(map) => {
+            if let Some(Value::String(id)) = map.get("agentId").or(map.get("agent_id")) {
+                return Some(if id.starts_with("agent-") { id.clone() } else { format!("agent-{}", id) });
+            }
+            // Recursive deep scan
+            for val in map.values() {
+                if let Some(id) = extract_agent_id(val) {
+                    return Some(id);
+                }
+            }
+            None
+        }
+        Value::Array(arr) => {
+            for val in arr {
+                if let Some(id) = extract_agent_id(val) {
+                    return Some(id);
+                }
+            }
+            None
+        }
+        _ => None,
+    }
 }
 
 fn calculate_session_stats(entries: &[RawLogEntry], total_cost: f64) -> SessionStats {
@@ -647,22 +701,98 @@ pub async fn get_session_details(project_id: String, session_id: String, page: O
     let (total_cost, _) = sum_session_metrics(&entries);
     let stats = calculate_session_stats(&entries, total_cost);
 
-    let mut display_entries: Vec<&RawLogEntry> = entries.iter().filter(|e| e.message.is_some()).collect();
-    display_entries.sort_by(|a, b| {
-        // Parse timestamps and sort by actual datetime, newest first
+    // Multi-pass parsing to link agent IDs
+    let mut messages: Vec<Message> = Vec::new();
+    let mut tool_use_map: HashMap<String, usize> = HashMap::new(); // tool_use_id -> message index
+
+    for entry in entries {
+        // We only care about user, assistant, and agent_progress for the transcript
+        if entry.entry_type != "user" && entry.entry_type != "assistant" && entry.entry_type != "agent_progress" {
+            continue;
+        }
+
+        let mut msg = transform_message(&entry);
+        
+        // Populate agentId from metadata if available
+        if entry.entry_type == "assistant" {
+           for block in &mut msg.content {
+               if block.get("type").and_then(|t| t.as_str()) == Some("tool_use") {
+                   if let Some(id) = block.get("id").and_then(|i| i.as_str()) {
+                       tool_use_map.insert(id.to_string(), messages.len());
+                       // Early check for agentId in input
+                       let subagent_id = block.get("input")
+                           .and_then(|i| i.get("subagent_type"))
+                           .and_then(|s| s.as_str())
+                           .and_then(|s| if s.contains(':') { s.split(':').nth(1).map(|id| id.to_string()) } else { None });
+
+                       if let Some(id) = subagent_id {
+                           block.as_object_mut().unwrap().insert("agentId".to_string(), Value::String(id));
+                       }
+                   }
+               }
+           }
+        } else if entry.entry_type == "user" {
+            // Check tool_result for agentIds
+            for block in &msg.content {
+                if block.get("type").and_then(|t| t.as_str()) == Some("tool_result") {
+                    if let Some(tool_use_id) = block.get("tool_use_id").and_then(|i| i.as_str()) {
+                        if let Some(&msg_idx) = tool_use_map.get(tool_use_id) {
+                            if let Some(agent_id) = extract_agent_id(block.get("content").unwrap_or(&Value::Null)) {
+                                // Link back to tool_use block
+                                for tool_block in &mut messages[msg_idx].content {
+                                    if tool_block.get("id").and_then(|i: &Value| i.as_str()) == Some(tool_use_id) {
+                                        tool_block.as_object_mut().unwrap().insert("agentId".to_string(), Value::String(agent_id.clone()));
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        } else if entry.entry_type == "agent_progress" {
+            // Convert to progress message
+            msg.msg_type = "progress".to_string();
+            if let Some(data) = entry._extra.get("data") {
+                 let prompt = data.get("prompt").and_then(|p| p.as_str()).unwrap_or("");
+                 let agent_id = data.get("agentId")
+                     .and_then(|a| a.as_str().map(|s| s.to_string()))
+                     .or_else(|| extract_agent_id(data));
+                 let parent_id = data.get("parentToolUseID").and_then(|p| p.as_str());
+                 
+                 msg.content = vec![serde_json::json!({
+                     "type": "progress",
+                     "text": prompt,
+                     "agentId": agent_id,
+                 })];
+
+                 if let (Some(pid), Some(ref aid)) = (parent_id, agent_id) {
+                     if let Some(&msg_idx) = tool_use_map.get(pid) {
+                         for tool_block in &mut messages[msg_idx].content {
+                             if tool_block.get("id").and_then(|i: &Value| i.as_str()) == Some(pid) {
+                                 tool_block.as_object_mut().unwrap().insert("agentId".to_string(), Value::String(aid.clone()));
+                             }
+                         }
+                     }
+                 }
+            }
+        }
+
+        messages.push(msg);
+    }
+
+    // Sort newest first
+    messages.sort_by(|a, b| {
         let a_ts = DateTime::parse_from_rfc3339(&a.timestamp).ok();
         let b_ts = DateTime::parse_from_rfc3339(&b.timestamp).ok();
-        b_ts.cmp(&a_ts) // Reverse order (newest first)
+        b_ts.cmp(&a_ts)
     });
-    let page_num = page.unwrap_or(1).saturating_sub(1); // Convert to 0-based
+
+    let page_num = page.unwrap_or(1).saturating_sub(1);
     let start_idx = page_num * MESSAGES_PER_PAGE;
-    let end_idx = (start_idx + MESSAGES_PER_PAGE).min(display_entries.len());
+    let end_idx = (start_idx + MESSAGES_PER_PAGE).min(messages.len());
 
-    let paginated_messages: Vec<Message> = display_entries[start_idx..end_idx]
-        .iter()
-        .map(|e| transform_message(e))
-        .collect();
-
+    let paginated_messages = messages[start_idx..end_idx].to_vec();
+    let message_count = messages.len();
     let last_modified = get_file_modified_time(&session_path);
 
     Ok(SessionDetails {
@@ -670,7 +800,7 @@ pub async fn get_session_details(project_id: String, session_id: String, page: O
         project_id,
         file_path: session_path.to_string_lossy().to_string(),
         last_modified,
-        message_count: display_entries.len(),
+        message_count,
         summary,
         stats: Some(stats),
         messages: paginated_messages,
@@ -688,8 +818,89 @@ pub async fn get_session_paginated(project_id: String, session_id: String, page:
     }
 
     let entries = read_session_entries(&session_path).await?;
-    let display_entries: Vec<RawLogEntry> = entries.into_iter().filter(|e| e.message.is_some()).collect();
-    let total_messages = display_entries.len();
+    
+    // Use the same robust multi-pass logic as get_session_details
+    let mut messages: Vec<Message> = Vec::new();
+    let mut tool_use_map: HashMap<String, usize> = HashMap::new();
+
+    for entry in entries {
+        if entry.entry_type != "user" && entry.entry_type != "assistant" && entry.entry_type != "agent_progress" {
+            continue;
+        }
+
+        let mut msg = transform_message(&entry);
+        
+        if entry.entry_type == "assistant" {
+           for block in &mut msg.content {
+               if block.get("type").and_then(|t| t.as_str()) == Some("tool_use") {
+                   if let Some(id) = block.get("id").and_then(|i| i.as_str()) {
+                       tool_use_map.insert(id.to_string(), messages.len());
+                       if block.get("name").and_then(|n| n.as_str()) == Some("Task") {
+                           let subagent_id = block.get("input")
+                               .and_then(|i| i.get("subagent_type"))
+                               .and_then(|s| s.as_str())
+                               .and_then(|s| if s.contains(':') { s.split(':').nth(1).map(|id| id.to_string()) } else { None });
+
+                           if let Some(id) = subagent_id {
+                               block.as_object_mut().unwrap().insert("agentId".to_string(), Value::String(id));
+                           }
+                       }
+                   }
+               }
+           }
+        } else if entry.entry_type == "user" {
+            for block in &msg.content {
+                if block.get("type").and_then(|t| t.as_str()) == Some("tool_result") {
+                    if let Some(tool_use_id) = block.get("tool_use_id").and_then(|i| i.as_str()) {
+                        if let Some(&msg_idx) = tool_use_map.get(tool_use_id) {
+                            if let Some(agent_id) = extract_agent_id(block.get("content").unwrap_or(&Value::Null)) {
+                                for tool_block in &mut messages[msg_idx].content {
+                                    if tool_block.get("id").and_then(|i: &Value| i.as_str()) == Some(tool_use_id) {
+                                        tool_block.as_object_mut().unwrap().insert("agentId".to_string(), Value::String(agent_id.clone()));
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        } else if entry.entry_type == "agent_progress" {
+            msg.msg_type = "progress".to_string();
+            if let Some(data) = entry._extra.get("data") {
+                 let prompt = data.get("prompt").and_then(|p| p.as_str()).unwrap_or("");
+                 let agent_id = data.get("agentId")
+                     .and_then(|a| a.as_str().map(|s| s.to_string()))
+                     .or_else(|| extract_agent_id(data));
+                 let parent_id = data.get("parentToolUseID").and_then(|p| p.as_str());
+                 
+                 msg.content = vec![serde_json::json!({
+                     "type": "progress",
+                     "text": prompt,
+                     "agentId": agent_id,
+                 })];
+
+                 if let (Some(pid), Some(ref aid)) = (parent_id, agent_id) {
+                     if let Some(&msg_idx) = tool_use_map.get(pid) {
+                         for tool_block in &mut messages[msg_idx].content {
+                             if tool_block.get("id").and_then(|i: &Value| i.as_str()) == Some(pid) {
+                                 tool_block.as_object_mut().unwrap().insert("agentId".to_string(), Value::String(aid.clone()));
+                             }
+                         }
+                     }
+                 }
+            }
+        }
+        messages.push(msg);
+    }
+
+    // Sort newest first
+    messages.sort_by(|a, b| {
+        let a_ts = DateTime::parse_from_rfc3339(&a.timestamp).ok();
+        let b_ts = DateTime::parse_from_rfc3339(&b.timestamp).ok();
+        b_ts.cmp(&a_ts)
+    });
+
+    let total_messages = messages.len();
     let total_pages = (total_messages + MESSAGES_PER_PAGE - 1) / MESSAGES_PER_PAGE;
     let page_num = page.unwrap_or(1).saturating_sub(1);
 
@@ -700,13 +911,8 @@ pub async fn get_session_paginated(project_id: String, session_id: String, page:
     let start_idx = page_num * MESSAGES_PER_PAGE;
     let end_idx = (start_idx + MESSAGES_PER_PAGE).min(total_messages);
 
-    let messages: Vec<Message> = display_entries[start_idx..end_idx]
-        .iter()
-        .map(transform_message)
-        .collect();
-
     Ok(PaginatedMessages {
-        messages,
+        messages: messages[start_idx..end_idx].to_vec(),
         total_pages,
         current_page: page_num + 1,
         total_messages,
@@ -827,6 +1033,35 @@ pub async fn get_project_stats(project_id: String) -> Result<ProjectStats, Strin
         first_session: first_session_str,
         last_session: last_session_str,
     })
+}
+
+
+/// Get full transcript for a sub-agent
+#[tauri::command]
+pub async fn get_agent_transcript(project_id: String, session_id: String, agent_id: String) -> Result<Vec<Message>, String> {
+    let projects_dir = get_projects_dir()?;
+    let agent_filename = format!("agent-{}.jsonl", agent_id);
+    
+    // Try location 1: project_dir / project_id / agent-id.jsonl
+    let mut agent_path = projects_dir.join(&project_id).join(&agent_filename);
+    
+    // Try location 2: project_dir / project_id / session_id / subagents / agent-id.jsonl
+    if !agent_path.exists() {
+        agent_path = projects_dir.join(&project_id).join(&session_id).join("subagents").join(&agent_filename);
+    }
+
+    if !agent_path.exists() {
+        return Err(format!("Agent transcript not found: {}", agent_filename));
+    }
+
+    let (entries, _) = read_session_data(&agent_path).await?;
+    
+    let messages: Vec<Message> = entries.iter()
+        .filter(|e| e.message.is_some())
+        .map(|e| transform_message(e))
+        .collect();
+
+    Ok(messages)
 }
 
 /// Delete a session file

@@ -10,7 +10,8 @@ import type {
   SessionDetails,
   ProjectStats,
   PaginatedMessages,
-} from './types'
+  Message,
+} from '@/shared/types/transcripts'
 
 /**
  * Get all projects from ~/.claude/projects/
@@ -70,10 +71,11 @@ export async function getSessionDetails(
     }
 
     const pagination: PaginatedMessages = {
-      messages:  details.messages,
+      messages: details.messages,
       totalPages: details.stats?.totalPages || 1,
       currentPage: page || 1,
       totalMessages: details.messageCount,
+      hasMore: (page || 1) < (details.stats?.totalPages || 1),
     }
 
     return { session, pagination }
@@ -110,7 +112,7 @@ export async function getProjectStats(projectId: string): Promise<ProjectStats |
   try {
     const stats = await invoke<ProjectStats>('get_project_stats', { projectId })
     if (!stats) return null
-    
+
     return {
       ...stats,
       firstSession: stats.firstSession ? new Date(stats.firstSession) : null,
@@ -134,5 +136,24 @@ export async function deleteSession(projectId: string, sessionId: string): Promi
   } catch (error) {
     console.error('[Transcripts] Failed to delete session:', error)
     return false
+  }
+}
+/**
+ * Get full transcript for a sub-agent
+ */
+export async function getAgentTranscript(
+  projectId: string,
+  sessionId: string,
+  agentId: string
+): Promise<Message[]> {
+  try {
+    return await invoke<Message[]>('get_agent_transcript', {
+      projectId,
+      sessionId,
+      agentId,
+    })
+  } catch (error) {
+    console.error(`[Transcripts] Failed to get agent transcript for ${agentId}:`, error)
+    return []
   }
 }

@@ -2,7 +2,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/sha
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/shared/components/ui/chart'
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from 'recharts'
 import { TrendingUp } from 'lucide-react'
-import type { StatsCache } from '@/shared/services/analytics/types'
+import type { StatsCache } from '@/shared/types/analytics'
 
 const chartConfig: ChartConfig = {
   messages: { label: 'Messages', color: 'hsl(var(--chart-1))' },

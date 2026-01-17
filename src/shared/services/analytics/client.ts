@@ -4,7 +4,7 @@
  */
 
 import { invoke } from '@tauri-apps/api/core'
-import type { StatsCache, AnalyticsSummary } from './types'
+import type { StatsCache, AnalyticsSummary } from '@/shared/types/analytics'
 
 /**
  * Get raw analytics data from ~/.claude/stats-cache.json

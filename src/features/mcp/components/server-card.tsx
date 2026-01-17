@@ -28,7 +28,7 @@ import {
 } from '@/shared/components/ui/dropdown-menu'
 import { Status, StatusIndicator, StatusLabel } from '@/shared/components/ui/status'
 import { checkServerStatus, toggleMcpServer, copyMcpToProject } from '@/shared/services/mcp/client'
-import type { McpServer } from '@/shared/services/mcp/types'
+import type { McpServer } from '@/shared/types/mcp'
 
 interface ProjectOption {
   path: string

@@ -14,6 +14,7 @@ pub mod skills;
 pub mod ai_chat;
 pub mod settings;
 pub mod library;
+pub mod agents;
 
 // Re-export all commands
 pub use fs_utils::*;
@@ -27,3 +28,4 @@ pub use skills::*;
 pub use ai_chat::*;
 pub use settings::*;
 pub use library::*;
+pub use agents::*;

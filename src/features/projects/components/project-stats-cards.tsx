@@ -19,7 +19,7 @@ import {
   StatIndicator,
   StatDescription,
 } from '@/shared/components/ui/stat'
-import type { ProjectStats } from '@/shared/services/transcripts/types'
+import type { ProjectStats } from '@/shared/types/transcripts'
 
 interface ProjectStatsCardsProps {
   stats: ProjectStats

@@ -14,6 +14,7 @@ import { Route as McpRouteImport } from './routes/mcp'
 import { Route as HistoryRouteImport } from './routes/history'
 import { Route as ClaudeCodeRouteImport } from './routes/claude-code'
 import { Route as AnalyticsRouteImport } from './routes/analytics'
+import { Route as AgentsRouteImport } from './routes/agents'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as TricksAndTipsIndexRouteImport } from './routes/tricks-and-tips/index'
 import { Route as TranscriptsIndexRouteImport } from './routes/transcripts/index'
@@ -22,6 +23,7 @@ import { Route as PlansIndexRouteImport } from './routes/plans/index'
 import { Route as FilesIndexRouteImport } from './routes/files/index'
 import { Route as SettingsProjectIdRouteImport } from './routes/settings/$projectId'
 import { Route as PlansPlanIdRouteImport } from './routes/plans/$planId'
+import { Route as AgentsNameRouteImport } from './routes/agents.$name'
 import { Route as TranscriptsProjectIdIndexRouteImport } from './routes/transcripts/$projectId/index'
 import { Route as FilesSessionIdIndexRouteImport } from './routes/files/$sessionId/index'
 import { Route as TranscriptsProjectIdSessionIdRouteImport } from './routes/transcripts/$projectId/$sessionId'
@@ -50,6 +52,11 @@ const ClaudeCodeRoute = ClaudeCodeRouteImport.update({
 const AnalyticsRoute = AnalyticsRouteImport.update({
   id: '/analytics',
   path: '/analytics',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AgentsRoute = AgentsRouteImport.update({
+  id: '/agents',
+  path: '/agents',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -92,6 +99,11 @@ const PlansPlanIdRoute = PlansPlanIdRouteImport.update({
   path: '/plans/$planId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AgentsNameRoute = AgentsNameRouteImport.update({
+  id: '/$name',
+  path: '/$name',
+  getParentRoute: () => AgentsRoute,
+} as any)
 const TranscriptsProjectIdIndexRoute =
   TranscriptsProjectIdIndexRouteImport.update({
     id: '/transcripts/$projectId/',
@@ -117,11 +129,13 @@ const FilesSessionIdFileHashRoute = FilesSessionIdFileHashRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/agents': typeof AgentsRouteWithChildren
   '/analytics': typeof AnalyticsRoute
   '/claude-code': typeof ClaudeCodeRoute
   '/history': typeof HistoryRoute
   '/mcp': typeof McpRoute
   '/skills': typeof SkillsRoute
+  '/agents/$name': typeof AgentsNameRoute
   '/plans/$planId': typeof PlansPlanIdRoute
   '/settings/$projectId': typeof SettingsProjectIdRoute
   '/files': typeof FilesIndexRoute
@@ -136,11 +150,13 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/agents': typeof AgentsRouteWithChildren
   '/analytics': typeof AnalyticsRoute
   '/claude-code': typeof ClaudeCodeRoute
   '/history': typeof HistoryRoute
   '/mcp': typeof McpRoute
   '/skills': typeof SkillsRoute
+  '/agents/$name': typeof AgentsNameRoute
   '/plans/$planId': typeof PlansPlanIdRoute
   '/settings/$projectId': typeof SettingsProjectIdRoute
   '/files': typeof FilesIndexRoute
@@ -156,11 +172,13 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/agents': typeof AgentsRouteWithChildren
   '/analytics': typeof AnalyticsRoute
   '/claude-code': typeof ClaudeCodeRoute
   '/history': typeof HistoryRoute
   '/mcp': typeof McpRoute
   '/skills': typeof SkillsRoute
+  '/agents/$name': typeof AgentsNameRoute
   '/plans/$planId': typeof PlansPlanIdRoute
   '/settings/$projectId': typeof SettingsProjectIdRoute
   '/files/': typeof FilesIndexRoute
@@ -177,11 +195,13 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/agents'
     | '/analytics'
     | '/claude-code'
     | '/history'
     | '/mcp'
     | '/skills'
+    | '/agents/$name'
     | '/plans/$planId'
     | '/settings/$projectId'
     | '/files'
@@ -196,11 +216,13 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/agents'
     | '/analytics'
     | '/claude-code'
     | '/history'
     | '/mcp'
     | '/skills'
+    | '/agents/$name'
     | '/plans/$planId'
     | '/settings/$projectId'
     | '/files'
@@ -215,11 +237,13 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/agents'
     | '/analytics'
     | '/claude-code'
     | '/history'
     | '/mcp'
     | '/skills'
+    | '/agents/$name'
     | '/plans/$planId'
     | '/settings/$projectId'
     | '/files/'
@@ -235,6 +259,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AgentsRoute: typeof AgentsRouteWithChildren
   AnalyticsRoute: typeof AnalyticsRoute
   ClaudeCodeRoute: typeof ClaudeCodeRoute
   HistoryRoute: typeof HistoryRoute
@@ -288,6 +313,13 @@ declare module '@tanstack/react-router' {
       path: '/analytics'
       fullPath: '/analytics'
       preLoaderRoute: typeof AnalyticsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/agents': {
+      id: '/agents'
+      path: '/agents'
+      fullPath: '/agents'
+      preLoaderRoute: typeof AgentsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -346,6 +378,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PlansPlanIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/agents/$name': {
+      id: '/agents/$name'
+      path: '/$name'
+      fullPath: '/agents/$name'
+      preLoaderRoute: typeof AgentsNameRouteImport
+      parentRoute: typeof AgentsRoute
+    }
     '/transcripts/$projectId/': {
       id: '/transcripts/$projectId/'
       path: '/transcripts/$projectId'
@@ -377,8 +416,20 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AgentsRouteChildren {
+  AgentsNameRoute: typeof AgentsNameRoute
+}
+
+const AgentsRouteChildren: AgentsRouteChildren = {
+  AgentsNameRoute: AgentsNameRoute,
+}
+
+const AgentsRouteWithChildren =
+  AgentsRoute._addFileChildren(AgentsRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AgentsRoute: AgentsRouteWithChildren,
   AnalyticsRoute: AnalyticsRoute,
   ClaudeCodeRoute: ClaudeCodeRoute,
   HistoryRoute: HistoryRoute,

@@ -4,7 +4,7 @@
  */
 
 import { invoke } from '@tauri-apps/api/core'
-import type { FileChange, FileHistoryStats, FileHistory, SessionFileChanges, FileDiff } from './types'
+import type { FileChange, FileHistoryStats, FileHistory, SessionFileChanges, FileDiff } from '@/shared/types/files'
 
 /**
  * Get all file changes across all sessions
