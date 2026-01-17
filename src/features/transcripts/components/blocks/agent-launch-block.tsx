@@ -42,6 +42,7 @@ export function AgentLaunchBlock({ input, projectId, sessionId, agentId: propsAg
     const [workshopActivity, setWorkshopActivity] = useState<Message[]>([])
     const [isLoadingWorkshop, setIsLoadingWorkshop] = useState(false)
     const [isSheetOpen, setIsSheetOpen] = useState(false)
+    const [workshopError, setWorkshopError] = useState<string>('')
 
     const subagentType = String(input.subagent_type || 'unknown')
     const displayType = getDisplayType(subagentType)
@@ -58,9 +59,15 @@ export function AgentLaunchBlock({ input, projectId, sessionId, agentId: propsAg
         if (!projectId || !sessionId) return
         setIsLoadingWorkshop(true)
         setIsSheetOpen(true)
+        setWorkshopError('')
         try {
             const messages = await getAgentTranscript(projectId, sessionId, id)
             setWorkshopActivity(messages)
+            console.log(`[agent-launch-block] Got ${messages.length} messages for agent ${id}`)
+        } catch (error) {
+            const errorMsg = error instanceof Error ? error.message : String(error)
+            setWorkshopError(errorMsg)
+            console.error(`[agent-launch-block] Error fetching agent transcript:`, errorMsg)
         } finally {
             setIsLoadingWorkshop(false)
         }
@@ -137,6 +144,11 @@ export function AgentLaunchBlock({ input, projectId, sessionId, agentId: propsAg
                                         {isLoadingWorkshop ? (
                                             <div className="flex items-center justify-center py-20">
                                                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                                            </div>
+                                        ) : workshopError ? (
+                                            <div className="text-center py-20 text-red-500">
+                                                <p className="text-sm font-semibold">Error Loading Workshop Activity</p>
+                                                <p className="text-xs mt-4 font-mono bg-red-50 dark:bg-red-950 p-3 rounded">{workshopError}</p>
                                             </div>
                                         ) : workshopActivity.length > 0 ? (
                                             <div className="space-y-6 pt-4">

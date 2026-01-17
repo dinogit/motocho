@@ -153,7 +153,8 @@ export async function getAgentTranscript(
       agentId,
     })
   } catch (error) {
-    console.error(`[Transcripts] Failed to get agent transcript for ${agentId}:`, error)
-    return []
+    const errorMsg = error instanceof Error ? error.message : String(error)
+    console.error(`[Transcripts] Failed to get agent transcript for ${agentId}:`, errorMsg)
+    throw error
   }
 }
