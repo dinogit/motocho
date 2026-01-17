@@ -38,8 +38,6 @@ pub struct AgentsDashboardData {
     pub user_agents: Vec<Agent>,
     #[serde(rename = "pluginAgents")]
     pub plugin_agents: Vec<Agent>,
-    #[serde(rename = "builtinAgents")]
-    pub builtin_agents: Vec<Agent>,
 }
 
 // ============================================================================
@@ -163,63 +161,91 @@ fn get_user_agents() -> Vec<Agent> {
 }
 
 /// Get plugin agents from ~/.claude/plugins/cache/
+/// Deduplicates agents by keeping only the latest version (last hash directory alphabetically)
 fn get_plugin_agents() -> Vec<Agent> {
-    let mut agents = Vec::new();
+    use std::collections::HashMap;
+
+    let mut agents_map: HashMap<String, Agent> = HashMap::new();
 
     let home_dir = match dirs::home_dir() {
         Some(dir) => dir,
-        None => return agents,
+        None => return Vec::new(),
     };
 
     let plugins_cache_dir = home_dir.join(".claude").join("plugins").join("cache");
 
     if !plugins_cache_dir.exists() {
-        return agents;
+        return Vec::new();
     }
 
-    // Iterate through plugin directories
-    if let Ok(plugin_entries) = fs::read_dir(&plugins_cache_dir) {
-        for plugin_entry in plugin_entries.flatten() {
-            let plugin_path = plugin_entry.path();
+    // Iterate through plugin organization directories (e.g., claude-plugins-official)
+    if let Ok(org_entries) = fs::read_dir(&plugins_cache_dir) {
+        for org_entry in org_entries.flatten() {
+            let org_path = org_entry.path();
 
-            if !plugin_path.is_dir() {
+            if !org_path.is_dir() {
                 continue;
             }
 
-            let plugin_name = plugin_path
-                .file_name()
-                .and_then(|s| s.to_str())
-                .unwrap_or("unknown")
-                .to_string();
+            // Iterate through plugin directories (e.g., feature-dev, pr-review-toolkit)
+            if let Ok(plugin_entries) = fs::read_dir(&org_path) {
+                for plugin_entry in plugin_entries.flatten() {
+                    let plugin_path = plugin_entry.path();
 
-            // Iterate through hash directories
-            if let Ok(hash_entries) = fs::read_dir(&plugin_path) {
-                for hash_entry in hash_entries.flatten() {
-                    let hash_path = hash_entry.path();
-                    let agents_dir = hash_path.join("agents");
-
-                    if !agents_dir.exists() {
+                    if !plugin_path.is_dir() {
                         continue;
                     }
 
-                    // Read agent files
-                    if let Ok(agent_entries) = fs::read_dir(&agents_dir) {
-                        for agent_entry in agent_entries.flatten() {
-                            let agent_file_path = agent_entry.path();
+                    let plugin_name = plugin_path
+                        .file_name()
+                        .and_then(|s| s.to_str())
+                        .unwrap_or("unknown")
+                        .to_string();
 
-                            // Only process .md files
-                            if agent_file_path.extension().and_then(|s| s.to_str()) != Some("md") {
-                                continue;
+                    // Collect all hash directories for this plugin and sort them
+                    // to get the latest version
+                    let mut hash_dirs: Vec<_> = Vec::new();
+                    if let Ok(hash_entries) = fs::read_dir(&plugin_path) {
+                        for hash_entry in hash_entries.flatten() {
+                            let hash_path = hash_entry.path();
+                            if hash_path.is_dir() {
+                                hash_dirs.push(hash_path);
                             }
+                        }
+                    }
 
-                            if let Ok(content) = fs::read_to_string(&agent_file_path) {
-                                if let Some(agent) = parse_agent_file(
-                                    &content,
-                                    agent_file_path.to_str().unwrap_or(""),
-                                    "plugin",
-                                    Some(plugin_name.clone()),
-                                ) {
-                                    agents.push(agent);
+                    // Sort hash directories to get consistent "latest" (alphabetically last)
+                    hash_dirs.sort();
+
+                    // Process only the latest hash directory for each plugin
+                    if let Some(latest_hash_dir) = hash_dirs.last() {
+                        let agents_dir = latest_hash_dir.join("agents");
+
+                        if !agents_dir.exists() {
+                            continue;
+                        }
+
+                        // Read agent files
+                        if let Ok(agent_entries) = fs::read_dir(&agents_dir) {
+                            for agent_entry in agent_entries.flatten() {
+                                let agent_file_path = agent_entry.path();
+
+                                // Only process .md files
+                                if agent_file_path.extension().and_then(|s| s.to_str()) != Some("md") {
+                                    continue;
+                                }
+
+                                if let Ok(content) = fs::read_to_string(&agent_file_path) {
+                                    if let Some(agent) = parse_agent_file(
+                                        &content,
+                                        agent_file_path.to_str().unwrap_or(""),
+                                        "plugin",
+                                        Some(plugin_name.clone()),
+                                    ) {
+                                        // Use plugin_name:agent_name as key for deduplication
+                                        let key = format!("{}:{}", plugin_name, agent.name);
+                                        agents_map.insert(key, agent);
+                                    }
                                 }
                             }
                         }
@@ -229,86 +255,9 @@ fn get_plugin_agents() -> Vec<Agent> {
         }
     }
 
-    agents
+    agents_map.into_values().collect()
 }
 
-/// Get built-in agents (hardcoded list)
-fn get_builtin_agents() -> Vec<Agent> {
-    vec![
-        Agent {
-            name: "Bash".to_string(),
-            description: "Command execution specialist for running bash commands".to_string(),
-            tools: vec!["Bash".to_string()],
-            skills: vec![],
-            mcp_servers: vec![],
-            model: "inherit".to_string(),
-            content: String::new(),
-            path: String::new(),
-            agent_type: "builtin".to_string(),
-            plugin_name: None,
-        },
-        Agent {
-            name: "general-purpose".to_string(),
-            description: "General-purpose agent for researching complex questions and executing multi-step tasks".to_string(),
-            tools: vec!["*".to_string()],
-            skills: vec![],
-            mcp_servers: vec![],
-            model: "sonnet".to_string(),
-            content: String::new(),
-            path: String::new(),
-            agent_type: "builtin".to_string(),
-            plugin_name: None,
-        },
-        Agent {
-            name: "statusline-setup".to_string(),
-            description: "Configure the user's Claude Code status line setting".to_string(),
-            tools: vec!["Read".to_string(), "Edit".to_string()],
-            skills: vec![],
-            mcp_servers: vec![],
-            model: "sonnet".to_string(),
-            content: String::new(),
-            path: String::new(),
-            agent_type: "builtin".to_string(),
-            plugin_name: None,
-        },
-        Agent {
-            name: "Explore".to_string(),
-            description: "Fast agent specialized for exploring codebases".to_string(),
-            tools: vec![],
-            skills: vec![],
-            mcp_servers: vec![],
-            model: "haiku".to_string(),
-            content: String::new(),
-            path: String::new(),
-            agent_type: "builtin".to_string(),
-            plugin_name: None,
-        },
-        Agent {
-            name: "Plan".to_string(),
-            description: "Software architect agent for designing implementation plans".to_string(),
-            tools: vec![],
-            skills: vec![],
-            mcp_servers: vec![],
-            model: "inherit".to_string(),
-            content: String::new(),
-            path: String::new(),
-            agent_type: "builtin".to_string(),
-            plugin_name: None,
-        },
-        Agent {
-            name: "claude-code-guide".to_string(),
-            description: "Guide for Claude Code CLI features and capabilities".to_string(),
-            tools: vec!["Glob".to_string(), "Grep".to_string(), "Read".to_string(), "WebFetch".to_string(), "WebSearch".to_string()],
-            skills: vec![],
-            mcp_servers: vec![],
-            model: "haiku".to_string(),
-            content: String::new(),
-            path: String::new(),
-            agent_type: "builtin".to_string(),
-            plugin_name: None,
-        },
-    ]
-}
 
 // ============================================================================
 // Tauri Commands
@@ -318,12 +267,10 @@ fn get_builtin_agents() -> Vec<Agent> {
 pub async fn get_agents_data() -> Result<AgentsDashboardData, String> {
     let user_agents = get_user_agents();
     let plugin_agents = get_plugin_agents();
-    let builtin_agents = get_builtin_agents();
 
     Ok(AgentsDashboardData {
         user_agents,
         plugin_agents,
-        builtin_agents,
     })
 }
 

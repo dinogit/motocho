@@ -12,6 +12,7 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 use tokio::io::{AsyncBufReadExt, BufReader};
+use uuid::Uuid;
 
 // ============================================================================
 // Constants
@@ -757,8 +758,9 @@ pub async fn get_session_details(project_id: String, session_id: String, page: O
                  let agent_id = data.get("agentId")
                      .and_then(|a| a.as_str().map(|s| s.to_string()))
                      .or_else(|| extract_agent_id(data));
-                 let parent_id = data.get("parentToolUseID").and_then(|p| p.as_str());
-                 
+                 // parentToolUseID is at top level, not inside data
+                 let parent_id = entry._extra.get("parentToolUseID").and_then(|p| p.as_str());
+
                  msg.content = vec![serde_json::json!({
                      "type": "progress",
                      "text": prompt,
@@ -871,8 +873,9 @@ pub async fn get_session_paginated(project_id: String, session_id: String, page:
                  let agent_id = data.get("agentId")
                      .and_then(|a| a.as_str().map(|s| s.to_string()))
                      .or_else(|| extract_agent_id(data));
-                 let parent_id = data.get("parentToolUseID").and_then(|p| p.as_str());
-                 
+                 // parentToolUseID is at top level, not inside data
+                 let parent_id = entry._extra.get("parentToolUseID").and_then(|p| p.as_str());
+
                  msg.content = vec![serde_json::json!({
                      "type": "progress",
                      "text": prompt,
@@ -1036,30 +1039,175 @@ pub async fn get_project_stats(project_id: String) -> Result<ProjectStats, Strin
 }
 
 
-/// Get full transcript for a sub-agent
+/// Get agent workshop activity - shows what the agent was doing
 #[tauri::command]
 pub async fn get_agent_transcript(project_id: String, session_id: String, agent_id: String) -> Result<Vec<Message>, String> {
     let projects_dir = get_projects_dir()?;
-    let agent_filename = format!("agent-{}.jsonl", agent_id);
-    
-    // Try location 1: project_dir / project_id / agent-id.jsonl
-    let mut agent_path = projects_dir.join(&project_id).join(&agent_filename);
-    
-    // Try location 2: project_dir / project_id / session_id / subagents / agent-id.jsonl
-    if !agent_path.exists() {
-        agent_path = projects_dir.join(&project_id).join(&session_id).join("subagents").join(&agent_filename);
+    let session_path = projects_dir.join(&project_id).join(format!("{}.jsonl", session_id));
+
+    if !session_path.exists() {
+        return Err(format!("Session not found: {}", session_id));
     }
 
-    if !agent_path.exists() {
-        return Err(format!("Agent transcript not found: {}", agent_filename));
+    let (entries, _) = read_session_data(&session_path).await?;
+
+    eprintln!("[get_agent_transcript] Looking for agent: {}", agent_id);
+    eprintln!("[get_agent_transcript] Total entries: {}", entries.len());
+
+    let mut messages: Vec<Message> = Vec::new();
+    let mut progress_count = 0;
+
+    // Find all agent_progress entries, then correlate with agent via tool_use_id mapping
+    let mut agent_progress_entries: Vec<(&RawLogEntry, Option<String>)> = Vec::new();
+
+    // First pass: collect all agent progress entries
+    for entry in &entries {
+        if entry.entry_type == "progress" {
+            if let Some(data) = entry._extra.get("data") {
+                if let Some(data_type) = data.get("type") {
+                    if data_type.as_str() == Some("agent_progress") {
+                        progress_count += 1;
+                        // parentToolUseID is a top-level field, not inside data
+                        let parent_tool_id = entry._extra.get("parentToolUseID")
+                            .and_then(|p| p.as_str())
+                            .map(|s| s.to_string());
+                        eprintln!("[get_agent_transcript] Found agent_progress with parentToolUseID: {:?}", parent_tool_id);
+                        agent_progress_entries.push((entry, parent_tool_id));
+                    }
+                }
+            }
+        }
     }
 
-    let (entries, _) = read_session_data(&agent_path).await?;
-    
-    let messages: Vec<Message> = entries.iter()
-        .filter(|e| e.message.is_some())
-        .map(|e| transform_message(e))
-        .collect();
+    eprintln!("[get_agent_transcript] Found {} progress entries", progress_count);
+
+    // Second pass: find tool_use blocks matching our agent_id by subagent_type
+    let mut matching_tool_ids: Vec<String> = Vec::new();
+    for entry in &entries {
+        if entry.entry_type == "assistant" {
+            if let Some(message) = &entry.message {
+                if let Value::Array(content) = &message.content {
+                    for block in content {
+                        if block.get("type").and_then(|t| t.as_str()) == Some("tool_use") {
+                            if let Some(tool_name) = block.get("name").and_then(|n| n.as_str()) {
+                                if tool_name == "Task" {
+                                    if let Some(input) = block.get("input") {
+                                        if let Some(subagent_type) = input.get("subagent_type").and_then(|s| s.as_str()) {
+                                            // Match subagent_type (e.g., "code-simplifier" or "feature-dev:code-reviewer")
+                                            let matches = if agent_id.contains(':') {
+                                                subagent_type == &agent_id
+                                            } else {
+                                                // For single names, also match plugin:name format
+                                                subagent_type == &agent_id || subagent_type.ends_with(&format!(":{}", agent_id))
+                                            };
+
+                                            if matches {
+                                                if let Some(tool_id) = block.get("id").and_then(|i| i.as_str()) {
+                                                    eprintln!("[get_agent_transcript] Found matching tool_use: {} with id: {}", subagent_type, tool_id);
+                                                    matching_tool_ids.push(tool_id.to_string());
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    eprintln!("[get_agent_transcript] Found {} matching tool_use blocks", matching_tool_ids.len());
+
+    // Third pass: extract messages from progress entries that match our tool IDs
+    for (entry, parent_tool_id) in agent_progress_entries {
+        if let Some(ref parent_id) = parent_tool_id {
+            if matching_tool_ids.contains(parent_id) {
+                eprintln!("[get_agent_transcript] Processing matching progress entry");
+
+                if let Some(data) = entry._extra.get("data") {
+                    // Extract the initial message (user request to the agent)
+                    if let Some(message_obj) = data.get("message") {
+                        if let Some(nested_msg) = message_obj.get("message") {
+                            let mut message = Message {
+                                uuid: entry.uuid.clone().unwrap_or_default(),
+                                msg_type: "user".to_string(),
+                                timestamp: entry.timestamp.clone(),
+                                content: vec![],
+                                model: None,
+                                usage: None,
+                            };
+
+                            if let Some(content) = nested_msg.get("content") {
+                                match content {
+                                    Value::String(s) => {
+                                        message.content = vec![serde_json::json!({
+                                            "type": "text",
+                                            "text": s
+                                        })];
+                                    }
+                                    Value::Array(arr) => {
+                                        message.content = arr.clone();
+                                    }
+                                    _ => {}
+                                }
+                            }
+
+                            messages.push(message);
+                        }
+                    }
+
+                    // Extract the agent's responses (normalizedMessages)
+                    if let Some(normalized) = data.get("normalizedMessages") {
+                        if let Some(arr) = normalized.as_array() {
+                            for norm_msg in arr {
+                                if let Some(msg_obj) = norm_msg.get("message") {
+                                    let mut message = Message {
+                                        uuid: Uuid::new_v4().to_string(),
+                                        msg_type: "assistant".to_string(),
+                                        timestamp: entry.timestamp.clone(),
+                                        content: vec![],
+                                        model: None,
+                                        usage: None,
+                                    };
+
+                                    if let Some(content) = msg_obj.get("content") {
+                                        match content {
+                                            Value::String(s) => {
+                                                message.content = vec![serde_json::json!({
+                                                    "type": "text",
+                                                    "text": s
+                                                })];
+                                            }
+                                            Value::Array(arr) => {
+                                                message.content = arr.clone();
+                                            }
+                                            _ => {}
+                                        }
+                                    }
+
+                                    if let Some(model) = msg_obj.get("model") {
+                                        if let Some(model_str) = model.as_str() {
+                                            message.model = Some(model_str.to_string());
+                                        }
+                                    }
+
+                                    messages.push(message);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    eprintln!("[get_agent_transcript] Extracted {} messages", messages.len());
+
+    if messages.is_empty() {
+        return Err(format!("No workshop activity found for agent: {}", agent_id));
+    }
 
     Ok(messages)
 }

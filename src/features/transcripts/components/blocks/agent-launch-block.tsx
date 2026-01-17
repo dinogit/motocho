@@ -1,7 +1,6 @@
 import { useState } from 'react'
-import { Bot, Activity, Loader2, ChevronRight, Share2, Sparkles, Wand2 } from 'lucide-react'
+import { Bot, Activity, Loader2, Wand2 } from 'lucide-react'
 import { Button } from '@/shared/components/ui/button'
-import { Badge } from '@/shared/components/ui/badge'
 import {
     Sheet,
     SheetContent,
@@ -10,7 +9,6 @@ import {
     SheetTrigger,
 } from '@/shared/components/ui/sheet'
 import { ScrollArea } from '@/shared/components/ui/scroll-area'
-import { cn } from '@/shared/lib/utils'
 import { getAgentTranscript } from '@/shared/services/transcripts/client'
 import { MessageBlock } from '../message-block'
 import type { Message } from '@/shared/types/transcripts'
@@ -41,30 +39,30 @@ function getDisplayType(type: string) {
 }
 
 export function AgentLaunchBlock({ input, projectId, sessionId, agentId: propsAgentId }: AgentLaunchBlockProps) {
-    const [agentTranscript, setAgentTranscript] = useState<Message[]>([])
-    const [isLoadingTranscript, setIsLoadingTranscript] = useState(false)
+    const [workshopActivity, setWorkshopActivity] = useState<Message[]>([])
+    const [isLoadingWorkshop, setIsLoadingWorkshop] = useState(false)
     const [isSheetOpen, setIsSheetOpen] = useState(false)
 
     const subagentType = String(input.subagent_type || 'unknown')
     const displayType = getDisplayType(subagentType)
     const description = SUBAGENT_DESCRIPTIONS[displayType] || SUBAGENT_DESCRIPTIONS[subagentType] || 'AI Agent'
-    const agentObjective = input.description
+    const agentTask = input.description
     const agentPrompt = input.prompt
 
-    console.log({ input, projectId, sessionId, propsAgentId })
+    console.log('Agent Launch Block', { subagentType, projectId, sessionId })
 
-    // Determine agentId
+    // Determine agentId - the agent that was invoked
     const effectiveAgentId = propsAgentId || (input as any).agentId
 
     const handleViewWorkshop = async (id: string) => {
         if (!projectId || !sessionId) return
-        setIsLoadingTranscript(true)
+        setIsLoadingWorkshop(true)
         setIsSheetOpen(true)
         try {
             const messages = await getAgentTranscript(projectId, sessionId, id)
-            setAgentTranscript(messages)
+            setWorkshopActivity(messages)
         } finally {
-            setIsLoadingTranscript(false)
+            setIsLoadingWorkshop(false)
         }
     }
 
@@ -90,10 +88,10 @@ export function AgentLaunchBlock({ input, projectId, sessionId, agentId: propsAg
                             </div>
                         </div>
 
-                        {agentObjective && (
+                        {agentTask && (
                             <div className="space-y-2 pl-1 border-l-2 border-sky-500/10">
                                 <span className="text-[10px] font-bold text-sky-600 uppercase tracking-widest pl-2">Objective</span>
-                                <p className="text-sm font-medium text-foreground pl-2">{String(agentObjective)}</p>
+                                <p className="text-sm font-medium text-foreground pl-2">{String(agentTask)}</p>
                             </div>
                         )}
 
@@ -136,20 +134,20 @@ export function AgentLaunchBlock({ input, projectId, sessionId, agentId: propsAg
                                         </SheetTitle>
                                     </SheetHeader>
                                     <ScrollArea className="flex-1 px-6 pb-6 border-t">
-                                        {isLoadingTranscript ? (
+                                        {isLoadingWorkshop ? (
                                             <div className="flex items-center justify-center py-20">
                                                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                                             </div>
-                                        ) : agentTranscript.length > 0 ? (
+                                        ) : workshopActivity.length > 0 ? (
                                             <div className="space-y-6 pt-4">
-                                                {agentTranscript.map((msg) => (
+                                                {workshopActivity.map((msg) => (
                                                     <MessageBlock key={msg.uuid} message={msg} projectId={projectId} sessionId={sessionId} />
                                                 ))}
                                             </div>
                                         ) : (
                                             <div className="text-center py-20 text-muted-foreground">
-                                                <p>Waiting for deep activity logs...</p>
-                                                <p className="text-[10px] mt-2">ID: {effectiveAgentId}</p>
+                                                <p>No workshop activity recorded</p>
+                                                <p className="text-[10px] mt-2">Agent: {effectiveAgentId}</p>
                                             </div>
                                         )}
                                     </ScrollArea>

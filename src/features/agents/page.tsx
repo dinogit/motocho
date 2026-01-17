@@ -1,10 +1,11 @@
 /**
  * Agents Dashboard Page
  *
- * Displays all available agents: user, plugin, and built-in agents.
+ * Displays all available agents: user-created and plugin agents.
+ * All agents are dynamically loaded from ~/.claude/ directory structure.
  */
 
-import { Bot, Sparkles, Package, Edit } from 'lucide-react'
+import { Sparkles, Package, Edit } from 'lucide-react'
 import { Link } from '@tanstack/react-router'
 import {
   PageHeader,
@@ -26,14 +27,13 @@ interface Agent {
   model: string
   content: string
   path: string
-  agentType: 'user' | 'plugin' | 'builtin'
+  agentType: 'user' | 'plugin'
   pluginName?: string
 }
 
 interface AgentsDashboardData {
   userAgents: Agent[]
   pluginAgents: Agent[]
-  builtinAgents: Agent[]
 }
 
 export function Page() {
@@ -164,51 +164,6 @@ export function Page() {
                                     </Badge>
                                 ))}
                               </div>
-                            </div>
-                        )}
-                      </CardContent>
-                    </Card>
-                ))}
-              </div>
-            </section>
-        )}
-
-        {/* Built-in Agents */}
-        {data.builtinAgents.length > 0 && (
-            <section className="space-y-4">
-              <div className="flex items-center gap-2">
-                <Bot className="h-5 w-5 text-primary" />
-                <h2 className="text-xl font-semibold">Built-in Agents</h2>
-                <Badge variant="secondary">{data.builtinAgents.length}</Badge>
-              </div>
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {data.builtinAgents.map((agent) => (
-                    <Card key={agent.name}>
-                      <CardHeader>
-                        <CardTitle className="flex items-center justify-between">
-                          <span>{agent.name}</span>
-                          <Badge variant="outline">{agent.model}</Badge>
-                        </CardTitle>
-                        {agent.description && (
-                            <CardDescription>{agent.description}</CardDescription>
-                        )}
-                      </CardHeader>
-                      <CardContent className="space-y-2">
-                        {agent.tools.length > 0 && agent.tools[0] !== '*' && (
-                            <div>
-                              <p className="text-sm font-medium mb-1">Tools</p>
-                              <div className="flex flex-wrap gap-1">
-                                {agent.tools.map((tool) => (
-                                    <Badge key={tool} variant="secondary" className="text-xs">
-                                      {tool}
-                                    </Badge>
-                                ))}
-                              </div>
-                            </div>
-                        )}
-                        {agent.tools[0] === '*' && (
-                            <div>
-                              <p className="text-sm text-muted-foreground">All tools available</p>
                             </div>
                         )}
                       </CardContent>

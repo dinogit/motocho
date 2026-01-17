@@ -21,14 +21,13 @@ interface Agent {
   model: string
   content: string
   path: string
-  agentType: 'user' | 'plugin' | 'builtin'
+  agentType: 'user' | 'plugin'
   pluginName?: string
 }
 
 interface AgentsDashboardData {
   userAgents: Agent[]
   pluginAgents: Agent[]
-  builtinAgents: Agent[]
 }
 
 export const Route = createFileRoute('/agents')({
