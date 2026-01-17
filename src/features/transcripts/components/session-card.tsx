@@ -75,8 +75,7 @@ export function SessionCard({
   }
 
   return (
-    <Card className="overflow-hidden border-0 bg-gradient-to-br from-card to-card/80 shadow-xl shadow-primary/5">
-      <div className="h-1 w-full bg-gradient-to-r from-emerald-500 via-cyan-500 to-blue-500" />
+    <Card className="overflow-hidden border-0 mb-12 bg-primary/5">
       <CardHeader className="pb-3 flex flex-row items-start justify-between space-y-0">
         <CardTitle className="text-xl font-semibold text-foreground leading-tight pr-4">{session.summary}</CardTitle>
         <div className="flex items-center gap-1">
@@ -122,31 +121,31 @@ export function SessionCard({
       <CardContent className="space-y-4">
         {/* Stats Grid */}
         {stats && (
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          <div className="flex flex-row justify-between gap-4">
             <StatItem
               icon={<MessageSquare className="h-4 w-4" />}
               value={stats.promptCount}
               label="prompts"
-              color="text-emerald-500"
+              color="text-chart-1"
             />
             <StatItem
               icon={<FileCode className="h-4 w-4" />}
               value={stats.messageCount}
               label="messages"
-              color="text-cyan-500"
+              color="text-chart-1"
             />
             <StatItem
               icon={<Terminal className="h-4 w-4" />}
               value={stats.toolCallCount}
               label="tool calls"
-              color="text-blue-500"
+              color="text-chart-1"
             />
             {stats.totalCostUsd > 0 && (
               <StatItem
                 icon={<DollarSign className="h-4 w-4" />}
                 value={stats.totalCostUsd.toFixed(2)}
                 label="cost"
-                color="text-amber-500"
+                color="text-chart-1"
               />
             )}
             {stats.durationMs !== undefined && stats.durationMs > 0 && (
@@ -154,28 +153,28 @@ export function SessionCard({
                 icon={<Clock className="h-4 w-4" />}
                 value={formatDuration(stats.durationMs)}
                 label="duration"
-                color="text-violet-500"
+                color="text-chart-1"
               />
             )}
             <StatItem
               icon={<FileCode className="h-4 w-4" />}
               value={stats.totalPages}
               label="pages"
-              color="text-rose-500"
+              color="text-chart-1"
             />
           </div>
         )}
 
         {/* Session Timing */}
         {stats?.startTimestamp && stats?.endTimestamp && (
-          <div className="flex flex-col sm:flex-row gap-2 sm:gap-6 text-xs text-muted-foreground bg-muted/30 rounded-lg p-3">
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-6 text-xs p-3">
             <div className="flex items-center gap-2">
-              <CalendarDays className="h-3.5 w-3.5 text-emerald-500" />
+              <CalendarDays className="h-4 w-4 text-chart-1" />
               <span className="text-muted-foreground/70">Start:</span>
               <span className="font-medium text-foreground/80">{new Date(stats.startTimestamp as string).toLocaleString()}</span>
             </div>
             <div className="flex items-center gap-2">
-              <CalendarDays className="h-3.5 w-3.5 text-rose-500" />
+              <CalendarDays className="h-4 w-4 text-chart-1" />
               <span className="text-muted-foreground/70">End:</span>
               <span className="font-medium text-foreground/80">{new Date(stats.endTimestamp as string).toLocaleString()}</span>
             </div>
@@ -186,11 +185,11 @@ export function SessionCard({
         <div className="flex items-center justify-between pt-2 border-t border-border/50">
           <div className="flex items-center gap-3 text-xs text-muted-foreground">
             <code className="font-mono bg-muted/50 px-2 py-1 rounded text-foreground/70">
-              {session.id.slice(0, 12)}
+              Session ID: {session.id}
             </code>
             {stats?.gitBranch && (
               <span className="flex items-center gap-1.5 bg-muted/50 px-2 py-1 rounded">
-                <GitBranch className="h-3 w-3 text-cyan-500" />
+                <GitBranch className="h-3 w-3 text-red-500" />
                 <span className="text-foreground/70">{stats.gitBranch}</span>
               </span>
             )}
@@ -216,7 +215,7 @@ function StatItem({
   color: string
 }) {
   return (
-    <div className="flex items-center gap-2 bg-muted/40 rounded-lg px-3 py-2">
+    <div className="flex items-center gap-2 px-3 py-2 w-fit">
       <span className={color}>{icon}</span>
       <div className="flex items-baseline gap-1.5">
         <span className="font-semibold text-foreground">{value}</span>

@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Bot, Activity, Loader2, Wand2 } from 'lucide-react'
+import { useState, useMemo } from 'react'
+import { Bot, Activity, Loader2, Wand2, Coins } from 'lucide-react'
 import { Button } from '@/shared/components/ui/button'
 import {
     Sheet,
@@ -38,6 +38,95 @@ function getDisplayType(type: string) {
     return type
 }
 
+interface TokenBreakdown {
+    inputTokens: number
+    outputTokens: number
+    cacheCreationTokens: number
+    cacheReadTokens: number
+    totalTokens: number
+    costUsd: number
+}
+
+interface ToolUsage {
+    name: string
+    count: number
+}
+
+interface AgentMetrics {
+    messageCount: number
+    durationMs: number
+    tokenBreakdown: TokenBreakdown
+    toolsUsed: ToolUsage[]
+}
+
+function calculateMetrics(messages: Message[]): AgentMetrics {
+    const toolCountMap = new Map<string, number>()
+    let inputTokens = 0
+    let outputTokens = 0
+    let cacheCreationTokens = 0
+    let cacheReadTokens = 0
+    let costUsd = 0
+    let durationMs = 0
+
+    // Extract detailed metrics
+    messages.forEach((msg) => {
+        // Aggregate token usage
+        if (msg.usage) {
+            inputTokens += msg.usage.inputTokens || 0
+            outputTokens += msg.usage.outputTokens || 0
+            cacheCreationTokens += msg.usage.cacheCreationTokens || 0
+            cacheReadTokens += msg.usage.cacheReadTokens || 0
+            costUsd += msg.usage.costUsd || 0
+        }
+
+        // Extract tools with counts
+        msg.content?.forEach((block) => {
+            if (block.type === 'tool_use' && block.name) {
+                toolCountMap.set(block.name, (toolCountMap.get(block.name) || 0) + 1)
+            }
+        })
+    })
+
+    // Calculate duration from first and last message timestamps
+    if (messages.length >= 2) {
+        const firstTimestamp = messages[0].timestamp
+        const lastTimestamp = messages[messages.length - 1].timestamp
+
+        if (firstTimestamp && lastTimestamp) {
+            const firstDate = new Date(firstTimestamp).getTime()
+            const lastDate = new Date(lastTimestamp).getTime()
+            durationMs = Math.max(0, lastDate - firstDate)
+        }
+    }
+
+    // Convert tool map to sorted array
+    const toolsUsed = Array.from(toolCountMap.entries())
+        .map(([name, count]) => ({ name, count }))
+        .sort((a, b) => b.count - a.count)
+
+    const totalTokens = inputTokens + outputTokens + cacheCreationTokens + cacheReadTokens
+
+    return {
+        messageCount: messages.length,
+        durationMs,
+        tokenBreakdown: {
+            inputTokens,
+            outputTokens,
+            cacheCreationTokens,
+            cacheReadTokens,
+            totalTokens,
+            costUsd,
+        },
+        toolsUsed,
+    }
+}
+
+function formatDuration(ms: number): string {
+    if (ms < 1000) return `${ms}ms`
+    if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`
+    return `${(ms / 60000).toFixed(1)}m`
+}
+
 export function AgentLaunchBlock({ input, projectId, sessionId, agentId: propsAgentId }: AgentLaunchBlockProps) {
     const [workshopActivity, setWorkshopActivity] = useState<Message[]>([])
     const [isLoadingWorkshop, setIsLoadingWorkshop] = useState(false)
@@ -54,6 +143,11 @@ export function AgentLaunchBlock({ input, projectId, sessionId, agentId: propsAg
 
     // Determine agentId - the agent that was invoked
     const effectiveAgentId = propsAgentId || (input as any).agentId
+
+    // Calculate metrics from workshop activity
+    const metrics = useMemo(() => {
+        return calculateMetrics(workshopActivity)
+    }, [workshopActivity])
 
     const handleViewWorkshop = async (id: string) => {
         if (!projectId || !sessionId) return
@@ -118,7 +212,6 @@ export function AgentLaunchBlock({ input, projectId, sessionId, agentId: propsAg
                     {/* Action Area */}
                     <div className="w-full flex flex-col items-center justify-center gap-3 p-4 bg-sky-500/5 rounded-lg border border-sky-500/10 self-center md:self-stretch">
                         <div className="text-center space-y-1">
-                            <span className="text-[9px] font-bold text-sky-500/60 uppercase tracking-tighter">Workshop Flow</span>
                             <p className="text-[10px] text-muted-foreground">Detailed activity logs are available for this sub-agent.</p>
                         </div>
 
@@ -134,11 +227,42 @@ export function AgentLaunchBlock({ input, projectId, sessionId, agentId: propsAg
                                     </Button>
                                 </SheetTrigger>
                                 <SheetContent className="sm:max-w-7xl w-full p-0 flex flex-col">
-                                    <SheetHeader className="p-6 pb-2">
+                                    <SheetHeader className="p-6 pb-3 space-y-4">
                                         <SheetTitle className="flex items-center gap-2">
                                             <Bot className="h-5 w-5 text-sky-500" />
                                             Agent Activity: {displayType}
                                         </SheetTitle>
+                                        {!isLoadingWorkshop && !workshopError && metrics.messageCount > 0 && (
+                                            <div className="flex items-center gap-3 flex-wrap pt-2">
+                                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                                    <span className="font-medium">{metrics.messageCount} messages</span>
+                                                    <span>•</span>
+                                                    <span className="font-medium">{formatDuration(metrics.durationMs)}</span>
+                                                    <span>•</span>
+                                                    <div className="flex items-center gap-1">
+                                                        <Coins className="h-3 w-3" />
+                                                        <span className="font-mono">{metrics.tokenBreakdown.totalTokens.toLocaleString()}</span>
+                                                        <span>${metrics.tokenBreakdown.costUsd.toFixed(4)}</span>
+                                                    </div>
+                                                    {metrics.tokenBreakdown.inputTokens > 0 && (
+                                                        <>
+                                                            <span>•</span>
+                                                            <span className="text-[11px]">
+                                                                in: {metrics.tokenBreakdown.inputTokens.toLocaleString()} out: {metrics.tokenBreakdown.outputTokens.toLocaleString()}
+                                                            </span>
+                                                        </>
+                                                    )}
+                                                    {metrics.toolsUsed.length > 0 && (
+                                                        <>
+                                                            <span>•</span>
+                                                            <span className="text-[11px]">
+                                                                tools: {metrics.toolsUsed.map(t => `${t.name}(${t.count})`).join(', ')}
+                                                            </span>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        )}
                                     </SheetHeader>
                                     <ScrollArea className="flex-1 px-6 pb-6 border-t overflow-scroll">
                                         {isLoadingWorkshop ? (
