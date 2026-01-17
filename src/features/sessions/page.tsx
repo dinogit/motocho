@@ -82,7 +82,6 @@ export function Page() {
           onAsk={handleAsk}
           onDelete={handleDelete}
           onRefresh={handleRefresh}
-          isRefreshing={isRefreshing}
         />
       </div>
 
