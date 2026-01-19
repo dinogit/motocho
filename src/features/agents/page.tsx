@@ -72,7 +72,7 @@ export function Page() {
                           <Badge variant="outline">{agent.model}</Badge>
                         </CardTitle>
                         {agent.description && (
-                            <CardDescription>{agent.description}</CardDescription>
+                            <CardDescription className="truncate line-clamp-3 h-12">{agent.description}</CardDescription>
                         )}
                       </CardHeader>
                       <CardContent className="space-y-2">
@@ -138,7 +138,7 @@ export function Page() {
                             </div>
                         )}
                         {agent.description && (
-                            <CardDescription>{agent.description}</CardDescription>
+                            <CardDescription className="truncate line-clamp-3 h-12">{agent.description}</CardDescription>
                         )}
                       </CardHeader>
                       <CardContent className="space-y-2">
