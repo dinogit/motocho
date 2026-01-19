@@ -1,17 +1,9 @@
 mod commands;
 
-use commands::fs_utils::*;
-use commands::analytics::*;
-use commands::history::*;
-use commands::transcripts::*;
-use commands::plans::*;
-use commands::files::*;
-use commands::mcp::*;
-use commands::skills::*;
-use commands::ai_chat::*;
-use commands::settings::*;
-use commands::library::*;
-use commands::agents::*;
+use commands::{
+    fs_utils::*, analytics::*, history::*, transcripts::*, plans::*, files::*, mcp::*,
+    skills::*, ai_chat::*, settings::*, library::*, agents::*, commands::*,
+};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -107,6 +99,8 @@ pub fn run() {
       get_agents_data,
       get_agent_by_name,
       update_agent,
+      // Commands
+      get_commands_data,
     ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");

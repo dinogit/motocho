@@ -22,6 +22,7 @@ import {
   Sparkles,
   Bot,
   Settings,
+  Terminal,
 } from "lucide-react"
 
 import { NavMain, type NavItem } from "@/shared/components/navigation/nav-main"
@@ -84,6 +85,11 @@ const staticNavItems: NavItem[] = [
     title: "Agents",
     url: "/agents",
     icon: Bot,
+  },
+  {
+    title: "Commands",
+    url: "/commands",
+    icon: Terminal,
   },
   {
     title: "Settings",
