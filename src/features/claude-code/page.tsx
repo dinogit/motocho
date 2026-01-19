@@ -390,7 +390,7 @@ function ToolCard({ tool }: { tool: Tool }) {
     <Card>
       <CardHeader className="pb-2">
         <div className="flex items-center gap-2">
-          <tool.icon className="h-5 w-5 text-primary" />
+          <tool.icon className="h-5 w-5 text-chart-1" />
           <CardTitle className="text-base">{tool.name}</CardTitle>
         </div>
         <CardDescription>{tool.description}</CardDescription>

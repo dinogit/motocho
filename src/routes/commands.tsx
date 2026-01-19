@@ -10,16 +10,11 @@
 
 import { createFileRoute } from '@tanstack/react-router'
 import { getCommandsData } from '@/shared/services/commands/client'
-import { CommandsPage } from '@/features/commands/page'
+import {Page} from '@/features/commands/page'
 
 export const Route = createFileRoute('/commands')({
   loader: async () => {
     return await getCommandsData()
   },
-  component: CommandsPageWrapper,
+  component: Page,
 })
-
-function CommandsPageWrapper() {
-  const data = Route.useLoaderData()
-  return <CommandsPage data={data} />
-}
