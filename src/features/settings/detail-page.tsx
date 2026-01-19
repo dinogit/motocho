@@ -8,17 +8,30 @@ import {
 import { Button } from '@/shared/components/ui/button'
 import { ChevronLeft } from 'lucide-react'
 import { ClaudeSettingsCard } from './components/claude-settings-card'
-import { setModel, toggleThinking } from '@/shared/services/settings/server-functions'
-import { toggleSkill } from '@/shared/services/skills/server-functions'
-import { toggleMcpServer } from '@/shared/services/mcp/server-functions'
-import type { SettingsDashboardData } from '@/shared/services/settings/types'
-import type { SkillsDashboardData, Skill } from '@/shared/services/skills/types'
-import type { McpDashboardData, McpServer } from '@/shared/services/mcp/types'
+import {
+    getSettingsData,
+    updateGlobalSettings,
+    updateProjectSettings,
+} from '@/shared/services/settings/client'
+
+interface SettingsLoaderData {
+    global: ClaudeSettings
+    projects: Record<string, ProjectSettings>
+    allProjects: { path: string; name: string }[]
+}
+
+import { toggleSkill } from '@/shared/services/skills/client'
+
+import { toggleMcpServer } from '@/shared/services/mcp/client'
+import { setModel, toggleThinking, clearModel } from '@/shared/services/settings/client'
+import type { SettingsDashboardData, ClaudeSettings, ProjectSettings } from '@/shared/types/settings'
+import type { SkillsDashboardData, Skill } from '@/shared/types/skills'
+import type { McpDashboardData, McpServer } from '@/shared/types/mcp'
 
 export function DetailPage() {
     const router = useRouter()
     const navigate = useNavigate()
-    const { settings, skills, mcp, projectPath, projectName } = useLoaderData({ from: '/settings/$projectId' }) as {
+    const { settings, skills, mcp, projectPath, projectName } = useLoaderData({ from: '/settings/$projectId', structuralSharing: false }) as {
         settings: SettingsDashboardData
         skills: SkillsDashboardData
         mcp: McpDashboardData
@@ -35,25 +48,25 @@ export function DetailPage() {
 
     const handleModelChange = async (model: string) => {
         if (model === 'default') {
-            await setModel({ data: { model: '', scope: 'project', projectPath } })
+            await clearModel('project', projectPath)
         } else {
-            await setModel({ data: { model, scope: 'project', projectPath } })
+            await setModel(model, 'project', projectPath)
         }
         router.invalidate()
     }
 
     const handleThinkingToggle = async (enabled: boolean) => {
-        await toggleThinking({ data: { enabled, scope: 'global' } })
+        await toggleThinking(enabled, 'global')
         router.invalidate()
     }
 
     const handleSkillToggle = async (skill: Skill, enabled: boolean) => {
-        await toggleSkill({ data: { skillPath: skill.path, enabled } })
+        await toggleSkill(skill.path, enabled)
         router.invalidate()
     }
 
     const handleMcpToggle = async (server: McpServer, enabled: boolean) => {
-        await toggleMcpServer({ data: { projectPath, serverName: server.name, enabled } })
+        await toggleMcpServer(projectPath, server.name, enabled)
         router.invalidate()
     }
 
@@ -83,8 +96,8 @@ export function DetailPage() {
             </PageHeader>
             <ClaudeSettingsCard
                 projectPath={projectPath}
-                currentModel={settings.projectSettings?.model || settings.globalSettings.model}
-                thinkingEnabled={settings.globalSettings.alwaysThinkingEnabled ?? false}
+                currentModel={settings.projects[projectPath]?.model || settings.global.model}
+                thinkingEnabled={settings.global.thinking || false}
                 skills={projectSkills}
                 mcpServers={projectMcpServers}
                 onModelChange={handleModelChange}

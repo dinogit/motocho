@@ -8,14 +8,14 @@ import { Link } from '@tanstack/react-router'
 import { FileText, Calendar, ArrowRight } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui/card'
 import { Route } from '@/routes/plans/index'
-import type { PlanSummary } from '@/shared/services/plans/types'
+import type { PlanSummary } from '@/shared/types/plans'
 
 export function PlansPage() {
   const { plans } = Route.useLoaderData() as { plans: PlanSummary[] }
 
   return (
-    <div className="flex flex-1 flex-col p-6">
-      <div className="max-w-4xl mx-auto w-full">
+    <div className="flex flex-1 flex-col">
+      <div className="max-w-full mx-auto w-full p-6">
         <div className="mb-6">
           <h1 className="text-2xl font-bold mb-2">Plans</h1>
           <p className="text-muted-foreground">
@@ -34,7 +34,7 @@ export function PlansPage() {
             </CardContent>
           </Card>
         ) : (
-          <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-4">
             {plans.map((plan) => (
               <Link key={plan.id} to="/plans/$planId" params={{ planId: plan.id }}>
                 <Card className="hover:bg-muted/50 transition-colors cursor-pointer group">
@@ -42,7 +42,7 @@ export function PlansPage() {
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
                         <CardTitle className="text-lg flex items-center gap-2">
-                          <FileText className="h-5 w-5 text-primary" />
+                          <FileText className="h-5 w-5 text-chart-1" />
                           {plan.title}
                         </CardTitle>
                         <CardDescription className="mt-1 line-clamp-2">

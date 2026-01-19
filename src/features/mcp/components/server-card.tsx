@@ -27,8 +27,8 @@ import {
   DropdownMenuTrigger,
 } from '@/shared/components/ui/dropdown-menu'
 import { Status, StatusIndicator, StatusLabel } from '@/shared/components/ui/status'
-import { checkServerStatus, toggleMcpServer, copyMcpToProject } from '@/shared/services/mcp/server-functions'
-import type { McpServer } from '@/shared/services/mcp/types'
+import { checkServerStatus, toggleMcpServer, copyMcpToProject } from '@/shared/services/mcp/client'
+import type { McpServer } from '@/shared/types/mcp'
 
 interface ProjectOption {
   path: string
@@ -85,7 +85,7 @@ export function ServerCard({
     setError(undefined)
 
     try {
-      const result = await checkServerStatus({ data: { url: server.url } })
+      const result = await checkServerStatus(server.url)
       setStatus(result.online ? 'online' : 'offline')
       if (!result.online) {
         setError(result.error)
@@ -100,15 +100,13 @@ export function ServerCard({
   const handleToggle = async (checked: boolean) => {
     setIsToggling(true)
     try {
-      const result = await toggleMcpServer({
-        data: { projectPath, serverName: server.name, enabled: checked },
-      })
+      const result = await toggleMcpServer(projectPath, server.name, checked)
 
-      if (result.success) {
+      if (result) {
         toast.success(checked ? `Enabled "${server.name}"` : `Disabled "${server.name}"`)
         onToggle?.()
       } else {
-        toast.error(result.error || 'Failed to toggle server')
+        toast.error('Failed to toggle server')
       }
     } catch {
       toast.error('Failed to toggle server')
@@ -121,18 +119,12 @@ export function ServerCard({
   const handleCopy = async (destinationProject: string, destinationName: string) => {
     setIsCopying(true)
     try {
-      const result = await copyMcpToProject({
-        data: {
-          sourceProject: projectPath,
-          serverName: server.name,
-          destinationProject,
-        },
-      })
+      const result = await copyMcpToProject(projectPath, server.name, destinationProject)
 
-      if (result.success) {
+      if (result) {
         toast.success(`Copied "${server.name}" to ${destinationName}`)
       } else {
-        toast.error(result.error || 'Failed to copy server')
+        toast.error('Failed to copy server')
       }
     } catch {
       toast.error('Failed to copy server')

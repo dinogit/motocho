@@ -9,7 +9,7 @@ import { GlobalServers } from './components/global-servers'
 import { ProjectSection } from './components/project-section'
 import { PluginCard } from './components/plugin-card'
 import { AddServerDialog } from './components/add-server-dialog'
-import type { McpDashboardData } from '@/shared/services/mcp/types'
+import type { McpDashboardData } from '@/shared/types/mcp'
 import {
   PageHeader,
   PageHeaderContent,
@@ -18,7 +18,7 @@ import {
 } from '@/shared/components/page/page-header'
 
 export function Page() {
-  const data = useLoaderData({ from: '/mcp' }) as McpDashboardData
+  const data = useLoaderData({ from: '/mcp', structuralSharing: false }) as McpDashboardData
   const allProjects = data.allProjects
 
   function handleRefresh() {

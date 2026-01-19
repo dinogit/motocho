@@ -7,7 +7,7 @@ import { routeTree } from './routeTree.gen'
 
 import './shared/styles/globals.css'
 import reportWebVitals from './reportWebVitals.ts'
-import './shared/styles/globals.css'
+import {CatchBoundary} from "@/shared/components/effects/catch-boundary.tsx";
 
 // Create a new router instance
 const router = createRouter({
@@ -17,6 +17,7 @@ const router = createRouter({
   scrollRestoration: true,
   defaultStructuralSharing: true,
   defaultPreloadStaleTime: 0,
+  defaultErrorComponent: CatchBoundary,
 })
 
 // Register the router instance for type safety
@@ -26,18 +27,17 @@ declare module '@tanstack/react-router' {
   }
 }
 
-// Render the app
+// Initialize the app
 const rootElement = document.getElementById('app')
-if (rootElement && !rootElement.innerHTML) {
-  const root = ReactDOM.createRoot(rootElement)
-  root.render(
-    <StrictMode>
-      <RouterProvider router={router} />
-    </StrictMode>,
-  )
+if (!rootElement) {
+  throw new Error('Root element #app not found in DOM')
 }
 
-// If you want to start measuring performance in your app, pass a function
-// to log results (for example: reportWebVitals(console.log))
-// or send to an analytics endpoint. Learn more: https://bit.ly/CRA-vitals
+const root = ReactDOM.createRoot(rootElement)
+root.render(
+  <StrictMode>
+    <RouterProvider router={router} />
+  </StrictMode>,
+)
+
 reportWebVitals()

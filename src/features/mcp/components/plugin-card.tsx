@@ -19,7 +19,7 @@ import { Package, PackageCheck, Globe, Terminal, Radio } from 'lucide-react'
 import { Card, CardContent } from '@/shared/components/ui/card'
 import { Badge } from '@/shared/components/ui/badge'
 import { Status, StatusIndicator, StatusLabel } from '@/shared/components/ui/status'
-import type { McpPlugin } from '@/shared/services/mcp/types'
+import type { McpPlugin } from '@/shared/types/mcp'
 
 interface PluginCardProps {
   plugin: McpPlugin

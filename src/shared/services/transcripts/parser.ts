@@ -7,7 +7,7 @@ import type {
   SessionStats,
   RawSummaryEntry,
   TokenUsage,
-} from './types'
+} from '@/shared/types/transcripts'
 
 // Anthropic pricing per million tokens (as of Dec 2025)
 // Source: https://claude.com/pricing
@@ -76,8 +76,13 @@ export function parseJsonlWithStats(content: string, perPage: number = 20): Pars
         continue
       }
 
-      // Skip non-message entries
-      if (parsed.type !== 'user' && parsed.type !== 'assistant') {
+      // Skip non-message and non-progress entries
+      if (parsed.type !== 'user' && parsed.type !== 'assistant' && parsed.type !== 'progress') {
+        continue
+      }
+
+      if (parsed.type === 'progress') {
+        entries.push(parsed as RawLogEntry)
         continue
       }
 
@@ -169,17 +174,41 @@ export function parseJsonl(content: string): Message[] {
  * Convert raw log entries to structured messages
  */
 function entriesToMessages(entries: RawLogEntry[]): Message[] {
-  // Filter for user/assistant messages only
-  // Note: parentUuid links conversation chain, NOT sub-agent filtering
-  // Agent messages are in separate files (agent-*.jsonl) which are excluded at file level
-  const mainEntries = entries.filter(
+  // Filter for user/assistant messages and progress entries
+  const activeEntries = entries.filter(
     (entry) =>
-      (entry.type === 'user' || entry.type === 'assistant') &&
-      entry.message
+      entry.type === 'user' || entry.type === 'assistant' || entry.type === 'progress'
   )
 
-  return mainEntries.map((entry) => {
+  const messages: Message[] = []
+  const toolUseMap: Record<string, ContentBlock> = {}
+
+  // First pass: Create messages and populate toolUseMap
+  activeEntries.forEach((entry) => {
+    if (entry.type === 'progress') {
+      if (entry.data) {
+        messages.push({
+          uuid: entry.uuid,
+          type: 'progress',
+          role: 'assistant', // Render as assistant for consistency
+          timestamp: entry.timestamp,
+          content: [
+            {
+              type: 'progress',
+              text: entry.data.prompt,
+              agentId: entry.data.agentId,
+              toolUseID: entry.data.toolUseID || (entry as any).data.toolUseId,
+              timestamp: entry.timestamp,
+            },
+          ],
+        })
+      }
+      return
+    }
+
     const msg = entry.message
+    if (!msg) return
+
     let usage: TokenUsage | undefined
 
     if (msg.usage) {
@@ -199,15 +228,96 @@ function entriesToMessages(entries: RawLogEntry[]): Message[] {
       }
     }
 
-    return {
+    const content = normalizeContent(msg.content)
+
+    // Store tool_use blocks in the map for progress association
+    // Also check for agentId in tool_results
+    content.forEach(block => {
+      if (block.type === 'tool_use' && block.id) {
+        toolUseMap[block.id] = block
+        // Check if agentId is already in the input (sometimes happens in certain versions of the log)
+        if (block.name === 'Task' && (block.input as any)?.agentId) {
+          block.agentId = (block.input as any).agentId
+        }
+      }
+      if (block.type === 'tool_result' && block.tool_use_id) {
+        const toolUseBlock = toolUseMap[block.tool_use_id]
+        if (toolUseBlock) {
+          toolUseBlock.result = block.content
+
+          // 1. Check if there's an agentId in the raw entry's toolUseResult metadata
+          if ((entry as any).toolUseResult?.agentId) {
+            toolUseBlock.agentId = (entry as any).toolUseResult.agentId
+          }
+
+          // 2. Try to extract agentId from the tool_result content (using aggressive deep scan)
+          if (!toolUseBlock.agentId) {
+            const searchStr = typeof block.content === 'string' ? block.content : JSON.stringify(block.content);
+
+            const agentIdMatch = searchStr.match(/agent-([a-f0-9]+)/i) ||
+              searchStr.match(/Agent ID[:\s]+([a-f0-9]+)/i) ||
+              searchStr.match(/agentId[:\s]+([a-f0-9]+)/i);
+
+            if (agentIdMatch) {
+              const id = agentIdMatch[1];
+              toolUseBlock.agentId = id.startsWith('agent-') ? id : `agent-${id}`;
+            }
+          }
+        }
+      }
+    })
+
+    messages.push({
       uuid: entry.uuid,
-      type: entry.type,
+      type: entry.type as any,
+      role: entry.type as any,
       timestamp: entry.timestamp,
-      content: normalizeContent(msg.content),
+      content,
       model: msg.model,
       usage,
+    })
+  })
+
+  // Second pass: Associate progress with tool calls and extract agentId from progress metadata
+  activeEntries.forEach((entry) => {
+    if (entry.type !== 'progress' || !entry.data) return
+
+    // Safety check for parentToolUseID in various possible locations
+    const parentId = (entry as any).parentToolUseID ||
+      (entry as any).data.parentToolUseID ||
+      (entry as any).data.toolUseId; // Some logs use lowercase id
+
+    if (parentId && toolUseMap[parentId]) {
+      const toolBlock = toolUseMap[parentId]
+
+      // Aggressively capture agentId from any progress data field
+      const extractedId = entry.data.agentId ||
+        (entry as any).agentId ||
+        (entry as any).data.agentID ||
+        (entry as any).data.agent_id;
+
+      if (extractedId && !toolBlock.agentId) {
+        toolBlock.agentId = extractedId.startsWith('agent-') ? extractedId : `agent-${extractedId}`;
+      }
+
+      if (!toolBlock.progress) {
+        toolBlock.progress = []
+      }
+
+      toolBlock.progress.push({
+        uuid: entry.uuid,
+        timestamp: entry.timestamp,
+        type: entry.data.type,
+        prompt: entry.data.prompt,
+        agentId: entry.data.agentId,
+        toolUseID: entry.data.toolUseID || parentId,
+        parentToolUseID: parentId,
+        ...entry.data
+      })
     }
   })
+
+  return messages
 }
 
 /**
@@ -271,6 +381,7 @@ export function paginateMessages(
     totalPages,
     currentPage,
     totalMessages,
+    hasMore: currentPage < totalPages,
   }
 }
 
@@ -282,8 +393,8 @@ export function generateSummary(messages: Message[], maxLength: number = 100): s
   if (!firstUserMessage) return 'Empty session'
 
   const textContent = firstUserMessage.content
-    .filter((block): block is { type: 'text'; text: string } => block.type === 'text')
-    .map((block) => block.text)
+    .filter((block: ContentBlock): block is { type: 'text'; text: string } => block.type === 'text')
+    .map((block: { text: string }) => block.text)
     .join(' ')
 
   if (textContent.length <= maxLength) {
@@ -301,7 +412,7 @@ export function extractToolStats(messages: Message[]): Record<string, number> {
 
   for (const message of messages) {
     for (const block of message.content) {
-      if (block.type === 'tool_use') {
+      if (block.type === 'tool_use' && block.name) {
         stats[block.name] = (stats[block.name] || 0) + 1
       }
     }
@@ -315,8 +426,8 @@ export function extractToolStats(messages: Message[]): Record<string, number> {
  */
 export function getMessageText(message: Message): string {
   return message.content
-    .filter((block): block is { type: 'text'; text: string } => block.type === 'text')
-    .map((block) => block.text)
+    .filter((block: ContentBlock): block is { type: 'text'; text: string } => block.type === 'text')
+    .map((block: { text: string }) => block.text)
     .join('\n')
 }
 
@@ -325,6 +436,6 @@ export function getMessageText(message: Message): string {
  */
 export function isToolResultOnly(message: Message): boolean {
   return message.content.every(
-    (block) => block.type === 'tool_result' || block.type === 'tool_use'
+    (block: ContentBlock) => block.type === 'tool_result' || block.type === 'tool_use'
   )
 }

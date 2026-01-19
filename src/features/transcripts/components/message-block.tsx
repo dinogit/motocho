@@ -1,4 +1,4 @@
-import { User, Bot, Coins, MessageSquare } from 'lucide-react'
+import { User, Bot, Coins, MessageSquare, Activity } from 'lucide-react'
 import { cn } from '@/shared/lib/utils'
 import { Card, CardContent } from '@/shared/components/ui/card'
 import { Avatar, AvatarFallback } from '@/shared/components/ui/avatar'
@@ -6,15 +6,18 @@ import { Badge } from '@/shared/components/ui/badge'
 import { Button } from '@/shared/components/ui/button'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/shared/components/ui/tooltip'
 import { ContentBlockRenderer } from './content-block-renderer'
-import type { Message } from '@/shared/services/transcripts/types'
+import type { Message } from '@/shared/types/transcripts'
 
 interface MessageBlockProps {
   message: Message
   onAsk?: (content: string, toolName: string, type: 'tool_use' | 'tool_result' | 'text') => void
+  projectId?: string
+  sessionId?: string
 }
 
-export function MessageBlock({ message, onAsk }: MessageBlockProps) {
+export function MessageBlock({ message, onAsk, projectId, sessionId }: MessageBlockProps) {
   const isUser = message.type === 'user'
+  const isProgress = message.type === 'progress'
   const usage = message.usage
 
   // Serialize all content blocks to a string for the "Ask" feature
@@ -39,14 +42,14 @@ export function MessageBlock({ message, onAsk }: MessageBlockProps) {
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
-            <Avatar className={cn('h-8 w-8 shrink-0 cursor-help', isUser ? 'bg-primary' : 'bg-orange-500')}>
-              <AvatarFallback className={cn(isUser ? 'bg-primary text-primary-foreground' : 'bg-orange-500 text-white')}>
+            <Avatar className={cn('h-8 w-8 shrink-0 cursor-help', isUser ? 'bg-primary' : isProgress ? 'bg-violet-500' : 'bg-chart-1')}>
+              <AvatarFallback className={cn(isUser ? 'bg-primary text-primary-foreground' : isProgress ? 'bg-violet-500 text-white' : 'bg-chart-1 text-white')}>
                 {isUser ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
               </AvatarFallback>
             </Avatar>
           </TooltipTrigger>
           <TooltipContent side="right">
-            <p className="font-medium">{isUser ? 'User (You)' : 'Assistant (Claude)'}</p>
+            <p className="font-medium">{isUser ? 'User (You)' : isProgress ? 'Sub-agent' : 'Assistant (Claude)'}</p>
             {!isUser && message.model && (
               <p className="text-xs text-muted-foreground">{message.model}</p>
             )}
@@ -59,12 +62,22 @@ export function MessageBlock({ message, onAsk }: MessageBlockProps) {
           'flex-1 overflow-hidden',
           isUser
             ? 'border-primary/20 bg-primary/5'
-            : 'border-orange-500/20 bg-orange-500/5'
+            : isProgress
+              ? 'border-violet-500/20 bg-violet-500/5'
+              : 'border-orange-300/20 bg-primary/5'
         )}
       >
         <CardContent className="p-4">
           <div className="flex items-center flex-wrap gap-2 mb-2 text-xs text-muted-foreground">
-            <span className="font-medium">{isUser ? 'You' : 'Claude'}</span>
+            <div className="flex items-center gap-2">
+              <span className="font-medium">{isUser ? 'You' : isProgress ? 'Sub-agent' : 'Claude'}</span>
+              {isProgress && (
+                <Badge variant="outline" className="text-[10px] py-0 bg-violet-500/10 text-violet-600 border-violet-500/20">
+                  <Activity className="h-3 w-3 mr-1" />
+                  Workshop
+                </Badge>
+              )}
+            </div>
             {message.model && (
               <Badge variant="outline" className="text-[10px] py-0">
                 {message.model.replace('claude-', '').replace(/-\d+$/, '')}
@@ -139,7 +152,7 @@ export function MessageBlock({ message, onAsk }: MessageBlockProps) {
 
           <div className="space-y-3">
             {message.content.map((block, index) => (
-              <ContentBlockRenderer key={index} block={block} />
+              <ContentBlockRenderer key={index} block={block} projectId={projectId} sessionId={sessionId} />
             ))}
           </div>
         </CardContent>

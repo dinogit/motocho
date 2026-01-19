@@ -1,6 +1,6 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui/card'
 import { Bot } from 'lucide-react'
-import type { StatsCache } from '@/shared/services/analytics/types'
+import type { StatsCache } from '@/shared/types/analytics'
 
 interface ModelUsageCardProps {
   data: StatsCache['modelUsage']

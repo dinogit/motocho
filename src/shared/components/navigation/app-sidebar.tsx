@@ -22,6 +22,7 @@ import {
   Sparkles,
   Bot,
   Settings,
+  Terminal,
 } from "lucide-react"
 
 import { NavMain, type NavItem } from "@/shared/components/navigation/nav-main"
@@ -33,9 +34,10 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/shared/components/ui/sidebar"
-import { getProjects } from "@/shared/services/transcripts/server-functions"
-import type { Project } from "@/shared/services/transcripts/types"
-import {ModeToggle} from "@/shared/components/effects/mode-toggle.tsx";
+import { getProjects } from "@/shared/services/transcripts/client"
+
+import { ModeToggle } from "@/shared/components/effects/mode-toggle.tsx";
+import type { Project } from "@/shared/types/transcripts.ts";
 
 // Static navigation items
 const staticNavItems: NavItem[] = [
@@ -80,6 +82,16 @@ const staticNavItems: NavItem[] = [
     icon: Sparkles,
   },
   {
+    title: "Agents",
+    url: "/agents",
+    icon: Bot,
+  },
+  {
+    title: "Commands",
+    url: "/commands",
+    icon: Terminal,
+  },
+  {
     title: "Settings",
     url: "/settings",
     icon: Settings,
@@ -93,6 +105,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     async function loadProjects() {
       try {
         const projects = await getProjects()
+
+        if (!projects || projects.length === 0) {
+          console.log("[AppSidebar] No projects found")
+          return
+        }
 
         // Convert projects to nav sub-items
         const projectSubItems = projects.map((project: Project) => ({
@@ -114,9 +131,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         newNavItems.splice(2, 0, projectsNavItem)
 
         setNavItems(newNavItems)
+        console.log("[AppSidebar] Nav items updated with projects")
       } catch (error) {
-        console.error("Failed to load projects:", error)
-        // Keep static nav items on error
+        console.error("[AppSidebar] Failed to load projects:", error)
+        // Keep static nav items on error - this is safe fallback
       }
     }
 
@@ -144,7 +162,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <NavMain items={navItems} />
       </SidebarContent>
       <SidebarFooter>
-          <ModeToggle />
+        <ModeToggle />
       </SidebarFooter>
     </Sidebar>
   )

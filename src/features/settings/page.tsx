@@ -6,13 +6,13 @@ import {
     PageTitle
 } from "@/shared/components/page/page-header.tsx"
 import { ProjectSettingsCard } from './components/project-settings-card'
-import type { SettingsDashboardData } from '@/shared/services/settings/types'
-import type { SkillsDashboardData } from '@/shared/services/skills/types'
-import type { McpDashboardData } from '@/shared/services/mcp/types'
+import type { SettingsDashboardData } from '@/shared/types/settings'
+import type { SkillsDashboardData } from '@/shared/types/skills'
+import type { McpDashboardData } from '@/shared/types/mcp'
 
 export function Page() {
     const navigate = useNavigate()
-    const { skills, mcp, allProjects, settingsMap } = useLoaderData({ from: '/settings/' }) as {
+    const { skills, mcp, allProjects, settingsMap } = useLoaderData({ from: '/settings/', structuralSharing: false }) as {
         skills: SkillsDashboardData
         mcp: McpDashboardData
         allProjects: Array<{ path: string; name: string }>
@@ -52,8 +52,8 @@ export function Page() {
 
                         // Get project-specific settings
                         const projectSettings = settingsMap[project.path]
-                        const model = projectSettings?.projectSettings?.model || projectSettings?.globalSettings.model
-                        const thinkingEnabled = projectSettings?.globalSettings.alwaysThinkingEnabled ?? false
+                        const model = projectSettings?.projects[project.path]?.model || projectSettings?.global.model
+                        const thinkingEnabled = projectSettings?.global.thinking ?? false
 
                         return (
                             <ProjectSettingsCard

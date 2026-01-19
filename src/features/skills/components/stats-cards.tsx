@@ -10,7 +10,7 @@
 
 import { FolderOpen, FileText, Sparkles, Zap } from 'lucide-react'
 import { Card, CardContent } from '@/shared/components/ui/card'
-import type { SkillsStats } from '@/shared/services/skills/types'
+import type { SkillsStats } from '@/shared/types/skills'
 
 interface StatsCardsProps {
   stats: SkillsStats

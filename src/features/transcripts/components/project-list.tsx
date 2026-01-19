@@ -3,7 +3,7 @@ import { formatDistanceToNow } from 'date-fns'
 import { Folder, Clock } from 'lucide-react'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/shared/components/ui/card'
 import { Badge } from '@/shared/components/ui/badge'
-import type { Project } from '@/shared/services/transcripts/types'
+import type { Project } from '@/shared/types/transcripts'
 
 interface ProjectListProps {
   projects: Project[]
@@ -32,7 +32,7 @@ export function ProjectList({ projects }: ProjectListProps) {
           <Card className="h-full transition-colors hover:bg-muted/50">
             <CardHeader className="pb-2">
               <div className="flex items-start justify-between">
-                <Folder className="h-5 w-5 text-muted-foreground" />
+                <Folder className="h-5 w-5 text-chart-1" />
                 <Badge variant="secondary">
                   {project.sessionCount} {project.sessionCount === 1 ? 'session' : 'sessions'}
                 </Badge>

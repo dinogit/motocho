@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link } from '@tanstack/react-router'
+import { Link, useLoaderData } from '@tanstack/react-router'
 import { Route } from '@/routes/files/index'
 import {
   PageHeader,
@@ -12,7 +12,7 @@ import { Badge } from '@/shared/components/ui/badge'
 import { Input } from '@/shared/components/ui/input'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/components/ui/tabs'
 import { FileIcon, FolderIcon, ClockIcon, EditIcon, FileTextIcon } from 'lucide-react'
-import type { SessionFileChanges, FileHistory } from '@/shared/services/files/types'
+import type { SessionFileChanges, FileHistory } from '@/shared/types/files'
 
 function formatRelativeTime(date: Date): string {
   const now = new Date()
@@ -28,7 +28,8 @@ function formatRelativeTime(date: Date): string {
   return date.toLocaleDateString()
 }
 
-function StatsCards({ stats }: { stats: { totalFiles: number; totalChanges: number; totalLinesWritten: number; sessionCount: number } }) {
+function StatsCards({ stats }: { stats: { totalFiles: number; totalChanges: number; totalLinesWritten: number; sessionCount: number } | null }) {
+  if (!stats) return null
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
       <Card className="p-4">
@@ -215,7 +216,11 @@ function FileList({ files }: { files: FileHistory[] }) {
 }
 
 export function Page() {
-  const { sessions, files, stats } = Route.useLoaderData()
+  const { sessions, files, stats } = useLoaderData({ from: '/files/', structuralSharing: false }) as {
+    sessions: SessionFileChanges[]
+    files: FileHistory[]
+    stats: any
+  }
 
   return (
     <>

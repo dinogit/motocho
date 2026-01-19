@@ -27,8 +27,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/shared/components/ui/select'
-import { addMcpServer } from '@/shared/services/mcp/server-functions'
-import type { McpServerConfig } from '@/shared/services/mcp/types'
+import { addMcpServer } from '@/shared/services/mcp/client'
+import type { McpServerConfig } from '@/shared/types/mcp'
 
 interface ProjectOption {
   path: string
@@ -120,17 +120,15 @@ export function AddServerDialog({ allProjects, onSuccess }: AddServerDialogProps
     setIsSubmitting(true)
 
     try {
-      const result = await addMcpServer({
-        data: { projectPath, serverName, serverConfig },
-      })
+      const result = await addMcpServer(projectPath, serverName, serverConfig)
 
-      if (result.success) {
+      if (result) {
         toast.success(`Added "${serverName}" to project`)
         resetForm()
         setOpen(false)
         onSuccess?.()
       } else {
-        toast.error(result.error || 'Failed to add server')
+        toast.error('Failed to add server')
       }
     } catch {
       toast.error('Failed to add server')

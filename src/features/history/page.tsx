@@ -1,11 +1,14 @@
 import { useState, useCallback, useRef } from 'react'
-import { Route } from '@/routes/history'
+import { Link, useRouter, useLoaderData } from '@tanstack/react-router'
 import { SearchInput } from './components/search-input'
 import { ProjectFilter } from './components/project-filter'
 import { SearchResultItem } from './components/search-result-item'
 import { StatsBar } from './components/stats-bar'
-import { searchHistory } from '@/shared/services/history/server-functions'
-import type { SearchResult } from '@/shared/services/history/types'
+const checkServerStatus: any = () => Promise.resolve()
+const toggleMcpServer: any = () => Promise.resolve()
+const copyMcpToProject: any = () => Promise.resolve()
+import { searchHistory } from '@/shared/services/history/client'
+import type { SearchResult } from '@/shared/types/history'
 import {
   PageHeader,
   PageHeaderContent,
@@ -14,7 +17,7 @@ import {
 } from '@/shared/components/page/page-header'
 
 export function Page() {
-  const { results: initialResults, projects, stats } = Route.useLoaderData()
+  const { results: initialResults, projects, stats } = useLoaderData({ from: '/history', structuralSharing: false }) as any
 
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedProject, setSelectedProject] = useState('all')
@@ -32,13 +35,11 @@ export function Page() {
     setIsSearching(true)
 
     try {
-      const searchResults = await searchHistory({
-        data: {
-          query,
-          project: selectedProjectRef.current === 'all' ? undefined : selectedProjectRef.current,
-          limit: 100,
-        },
-      })
+      const searchResults = await searchHistory(
+        query,
+        selectedProjectRef.current === 'all' ? undefined : selectedProjectRef.current,
+        100,
+      )
       setResults(searchResults)
     } finally {
       setIsSearching(false)
@@ -50,13 +51,11 @@ export function Page() {
     setIsSearching(true)
 
     try {
-      const searchResults = await searchHistory({
-        data: {
-          query: searchQueryRef.current,
-          project: project === 'all' ? undefined : project,
-          limit: 100,
-        },
-      })
+      const searchResults = await searchHistory(
+        searchQueryRef.current,
+        project === 'all' ? undefined : project,
+        100,
+      )
       setResults(searchResults)
     } finally {
       setIsSearching(false)
@@ -78,50 +77,50 @@ export function Page() {
         </PageHeaderContent>
       </PageHeader>
       <div className="flex flex-col gap-6 p-6">
-      {stats && (
-        <StatsBar
-          stats={stats}
-          resultCount={results.length}
-          isFiltered={isFiltered}
-        />
-      )}
+        {stats && (
+          <StatsBar
+            stats={stats}
+            resultCount={results.length}
+            isFiltered={isFiltered}
+          />
+        )}
 
-      <div className="flex flex-wrap gap-3">
-        <div className="flex-1 min-w-[250px]">
-          <SearchInput
-            onChange={handleSearch}
-            placeholder="Search prompts..."
+        <div className="flex flex-wrap gap-3">
+          <div className="flex-1 min-w-[250px]">
+            <SearchInput
+              onChange={handleSearch}
+              placeholder="Search prompts..."
+            />
+          </div>
+          <ProjectFilter
+            projects={projects}
+            value={selectedProject}
+            onChange={handleProjectChange}
           />
         </div>
-        <ProjectFilter
-          projects={projects}
-          value={selectedProject}
-          onChange={handleProjectChange}
-        />
-      </div>
 
-      <div className="flex flex-col gap-3">
-        {isSearching ? (
-          <div className="flex items-center justify-center py-12 text-muted-foreground">
-            Searching...
-          </div>
-        ) : results.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-            <p>No prompts found</p>
-            {isFiltered && (
-              <p className="text-sm mt-1">Try adjusting your search or filter</p>
-            )}
-          </div>
-        ) : (
-          results.map((result, index) => (
-            <SearchResultItem
-              key={`${result.entry.sessionId}-${result.entry.timestamp}-${index}`}
-              result={result}
-              query={searchQuery}
-            />
-          ))
-        )}
-      </div>
+        <div className="flex flex-col gap-3">
+          {isSearching ? (
+            <div className="flex items-center justify-center py-12 text-muted-foreground">
+              Searching...
+            </div>
+          ) : results.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+              <p>No prompts found</p>
+              {isFiltered && (
+                <p className="text-sm mt-1">Try adjusting your search or filter</p>
+              )}
+            </div>
+          ) : (
+            results.map((result, index) => (
+              <SearchResultItem
+                key={`${result.entry.sessionId}-${result.entry.timestamp}-${index}`}
+                result={result}
+                query={searchQuery}
+              />
+            ))
+          )}
+        </div>
       </div>
     </>
   )

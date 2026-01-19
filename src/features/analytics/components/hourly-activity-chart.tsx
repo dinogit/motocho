@@ -40,7 +40,7 @@ export function HourlyActivityChart({ data }: HourlyActivityChartProps) {
             />
             <YAxis tickLine={false} axisLine={false} tickMargin={8} fontSize={12} />
             <ChartTooltip content={<ChartTooltipContent />} />
-            <Bar dataKey="sessions" fill="var(--color-sessions)" radius={[4, 4, 0, 0]} />
+            <Bar dataKey="sessions" fill="var(--chart-1)" radius={[4, 4, 0, 0]} />
           </BarChart>
         </ChartContainer>
       </CardContent>

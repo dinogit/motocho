@@ -12,11 +12,19 @@
  */
 
 import { createFileRoute } from '@tanstack/react-router'
+import { invoke } from '@tauri-apps/api/core'
 import { Page } from '@/features/mcp/page'
-import { getMcpData } from '@/shared/services/mcp/server-functions'
+import type { McpDashboardData } from '@/shared/types/mcp'
 
 export const Route = createFileRoute('/mcp')({
   // Loader runs on server - reads Claude config files
-  loader: () => getMcpData(),
+  loader: async () => {
+    try {
+      return await invoke<McpDashboardData>('get_mcp_data')
+    } catch (error) {
+      console.error('Failed to get MCP data:', error)
+      return null
+    }
+  },
   component: Page,
 })

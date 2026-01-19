@@ -1,16 +1,21 @@
 import * as React from "react"
 import { useState, useEffect } from "react"
+import { useRouter } from "@tanstack/react-router"
 import { cn } from "@/shared/lib/utils.ts"
 import { SidebarTrigger } from "@/shared/components/ui/sidebar.tsx"
-import { getUsageInfo } from "@/shared/services/usage/server-functions"
-import { GaugeIcon } from "lucide-react"
+import { Button } from "@/shared/components/ui/button.tsx"
+// import { getUsageInfo } from "@/shared/services/usage/client"
+const getUsageInfo: any = () => Promise.resolve({})
+import { ArrowLeft, GaugeIcon } from "lucide-react"
 
 function UsageIndicator() {
     const [threshold, setThreshold] = useState<number | null>(null)
 
     useEffect(() => {
-        getUsageInfo().then((info) => {
-            setThreshold(info.tokenThreshold)
+        getUsageInfo().then((info: any) => {
+            if (info) {
+                setThreshold(info.tokenThreshold)
+            }
         })
     }, [])
 
@@ -43,17 +48,41 @@ function PageHeader({ className, children, ...props }: React.ComponentProps<"div
 }
 
 function PageHeaderContent({
-                               className,
-                               hideSidebarTrigger = false,
-                               children,
-                               ...props
-                           }: React.ComponentProps<"div"> & { hideSidebarTrigger?: boolean }) {
+    className,
+    hideSidebarTrigger = false,
+    showBackButton = false,
+    children,
+    ...props
+}: React.ComponentProps<"div"> & {
+    hideSidebarTrigger?: boolean
+    showBackButton?: boolean
+}) {
+    const router = useRouter()
+
+    const handleBack = () => {
+        router.history.back()
+    }
+
     return (
         <div
             data-slot="page-header-content"
             className={cn("flex flex-row gap-2 items-center", className)}
             {...props}
         >
+            {!showBackButton && (
+                <>
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleBack}
+                        className="h-8 w-8 p-0"
+                        aria-label="Go back"
+                    >
+                        <ArrowLeft className="h-4 w-4" />
+                    </Button>
+                    <PageHeaderSeparator />
+                </>
+            )}
             {!hideSidebarTrigger && (
                 <>
                     <SidebarTrigger className="-ml-1" />
@@ -66,9 +95,9 @@ function PageHeaderContent({
 }
 
 function PageHeaderSeparator({
-                                 className,
-                                 ...props
-                             }: React.ComponentProps<"div">) {
+    className,
+    ...props
+}: React.ComponentProps<"div">) {
     return (
         <div
             data-slot="page-header-separator"

@@ -40,8 +40,8 @@ import {
 } from '@/shared/components/ui/alert-dialog'
 import { Button } from '@/shared/components/ui/button'
 import { Checkbox } from '@/shared/components/ui/checkbox'
-import type { Skill } from '@/shared/services/skills/types'
-import { copySkill, deleteSkill } from '@/shared/services/skills/server-functions'
+import type { Skill } from '@/shared/types/skills'
+import { copySkill, deleteSkill } from '@/shared/services/skills/client'
 import { MarkdownViewer } from './markdown-viewer'
 
 interface ProjectOption {
@@ -73,14 +73,14 @@ export function SkillCard({
   async function handleDelete() {
     setIsDeleting(true)
     try {
-      const result = await deleteSkill({ data: { skillPath: skill.path } })
+      const result = await deleteSkill(skill.path)
 
-      if (result.success) {
+      if (result) {
         toast.success(`Deleted "${skill.name}"`)
         // Reload page to reflect changes
         window.location.reload()
       } else {
-        toast.error(result.error || 'Failed to delete skill')
+        toast.error('Failed to delete skill')
       }
     } catch {
       toast.error('Failed to delete skill')
@@ -92,17 +92,12 @@ export function SkillCard({
   async function handleCopy(destinationProject: string, destinationName: string) {
     setIsCopying(true)
     try {
-      const result = await copySkill({
-        data: {
-          sourcePath: skill.path,
-          destinationProject,
-        },
-      })
+      const result = await copySkill(skill.path, destinationProject)
 
-      if (result.success) {
+      if (result) {
         toast.success(`Copied "${skill.name}" to ${destinationName}`)
       } else {
-        toast.error(result.error || 'Failed to copy skill')
+        toast.error('Failed to copy skill')
       }
     } catch {
       toast.error('Failed to copy skill')

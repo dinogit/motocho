@@ -27,7 +27,7 @@ import {
 import { Button } from '@/shared/components/ui/button'
 import { ChevronDown } from 'lucide-react'
 import { ServerCard } from './server-card'
-import type { ProjectMcpConfig } from '@/shared/services/mcp/types'
+import type { ProjectMcpConfig } from '@/shared/types/mcp'
 
 interface ProjectOption {
   path: string

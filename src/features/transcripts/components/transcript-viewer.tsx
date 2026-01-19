@@ -1,6 +1,6 @@
-import { useState } from 'react'
 import { MessageBlock } from './message-block'
-import {MessageSquare, Terminal, FileCode, DollarSign, Trash2, Loader2, Clock, CalendarDays} from 'lucide-react'
+import { StandaloneProgressBlock } from './blocks/standalone-progress-block'
+import { SessionCard } from './session-card'
 import {
   Pagination,
   PaginationContent,
@@ -10,21 +10,8 @@ import {
   PaginationPrevious,
   PaginationEllipsis,
 } from '@/shared/components/ui/pagination'
-import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card'
-import { Button } from '@/shared/components/ui/button'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/shared/components/ui/alert-dialog'
 import { ScrollArea } from '@/shared/components/ui/scroll-area'
-import type { Session, PaginatedMessages } from '@/shared/services/transcripts/types'
+import type { Session, PaginatedMessages } from '@/shared/types/transcripts'
 
 interface TranscriptViewerProps {
   session: Session
@@ -32,23 +19,7 @@ interface TranscriptViewerProps {
   onPageChange: (page: number) => void
   onAsk?: (content: string, toolName: string, type: 'tool_use' | 'tool_result' | 'text') => void
   onDelete?: () => Promise<void>
-}
-
-/**
- * Format duration in milliseconds to human-readable format (e.g., "2h 45m 30s")
- */
-function formatDuration(durationMs: number): string {
-  const totalSeconds = Math.floor(durationMs / 1000)
-  const hours = Math.floor(totalSeconds / 3600)
-  const minutes = Math.floor((totalSeconds % 3600) / 60)
-  const seconds = totalSeconds % 60
-
-  const parts = []
-  if (hours > 0) parts.push(`${hours}h`)
-  if (minutes > 0) parts.push(`${minutes}m`)
-  if (seconds > 0 || parts.length === 0) parts.push(`${seconds}s`)
-
-  return parts.join(' ')
+  onRefresh?: () => Promise<void>
 }
 
 export function TranscriptViewer({
@@ -57,114 +28,41 @@ export function TranscriptViewer({
   onPageChange,
   onAsk,
   onDelete,
+  onRefresh,
 }: TranscriptViewerProps) {
   const { messages, currentPage, totalPages } = pagination
-  const stats = session.stats
-  const [isDeleting, setIsDeleting] = useState(false)
-
-  const handleDelete = async () => {
-    if (!onDelete) return
-    setIsDeleting(true)
-    await onDelete()
-    setIsDeleting(false)
-  }
 
   return (
     <div className="flex flex-col h-full">
-      <Card className="mb-4">
-        <CardHeader className="pb-2 flex flex-row items-start justify-between space-y-0">
-          <CardTitle className="text-lg">{session.summary}</CardTitle>
-          {onDelete && (
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" disabled={isDeleting}>
-                  {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Delete session?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This will permanently delete this session from disk. This cannot be undone.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleDelete}>Delete</AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          )}
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {/* Stats row - like simonw's format */}
-          {stats && (
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
-              <span className="flex items-center gap-1.5">
-                <MessageSquare className="h-4 w-4" />
-                {stats.promptCount} prompts
-              </span>
-              <span>·</span>
-              <span className="flex items-center gap-1.5">
-                <FileCode className="h-4 w-4" />
-                {stats.messageCount} messages
-              </span>
-              <span>·</span>
-              <span className="flex items-center gap-1.5">
-                <Terminal className="h-4 w-4" />
-                {stats.toolCallCount} tool calls
-              </span>
-              <span>·</span>
-              <span>{stats.totalPages} pages</span>
-              {stats.totalCostUsd > 0 && (
-                <>
-                  <span>·</span>
-                  <span className="flex items-center gap-1">
-                    <DollarSign className="h-4 w-4" />
-                    {stats.totalCostUsd.toFixed(2)}
-                  </span>
-                </>
-              )}
-              {stats.durationMs > 0 && (
-                <>
-                  <span>·</span>
-                  <span className="flex items-center gap-1.5">
-                    <Clock className="h-4 w-4" />
-                    {formatDuration(stats.durationMs)}
-                  </span>
-                </>
-              )}
-            </div>
-          )}
-          {/* Session timing row */}
-          {stats && stats.startTimestamp && stats.endTimestamp && (
-            <div className="text-xs text-muted-foreground flex flex-row gap-2">
-              <div className="flex items-center gap-1">
-                <CalendarDays className="h-4 w-4" />
-                Start: {new Date(stats.startTimestamp).toLocaleString()}
-              </div>
-              <span> - </span>
-              <div className="flex items-center gap-1">
-                <CalendarDays className="h-4 w-4" />
-                End: {new Date(stats.endTimestamp).toLocaleString()}
-              </div>
-            </div>
-          )}
-          {/* Metadata row */}
-          <div className="flex items-center gap-4 text-xs text-muted-foreground">
-            <span className="font-mono">{session.id.slice(0, 12)}</span>
-            <span className="ml-auto">
-              Page {currentPage} of {totalPages}
-            </span>
-          </div>
-        </CardContent>
-      </Card>
+      <SessionCard
+        session={session}
+        currentPage={currentPage}
+        totalPages={totalPages}
+        onRefresh={onRefresh}
+        onDelete={onDelete}
+      />
 
       <ScrollArea className="flex-1">
         <div className="space-y-4 pb-4">
-          {messages.map((message) => (
-            <MessageBlock key={message.uuid} message={message} onAsk={onAsk} />
-          ))}
+          {messages.slice().reverse().map((message) => {
+            if (message.type === 'progress') {
+              const progressBlock = message.content.find(b => b.type === 'progress')
+              if (progressBlock) {
+                return (
+                  <StandaloneProgressBlock
+                    key={message.uuid}
+                    text={progressBlock.text || ''}
+                    agentId={progressBlock.agentId}
+                    timestamp={message.timestamp}
+                    toolUseID={progressBlock.toolUseID}
+                  />
+                )
+              }
+            }
+            return (
+              <MessageBlock key={message.uuid} message={message} onAsk={onAsk} projectId={session.projectId} sessionId={session.id} />
+            )
+          })}
         </div>
       </ScrollArea>
 

@@ -2,7 +2,7 @@ import { Link } from '@tanstack/react-router'
 import { formatDistanceToNow } from 'date-fns'
 import { Clock, FileText, MessageSquare, Terminal, FileCode } from 'lucide-react'
 import { Card, CardHeader, CardTitle, CardContent } from '@/shared/components/ui/card'
-import type { Session } from '@/shared/services/transcripts/types'
+import type { Session } from '@/shared/types/transcripts'
 
 interface SessionListProps {
   sessions: Session[]
@@ -21,7 +21,7 @@ export function SessionList({ sessions, projectId }: SessionListProps) {
   }
 
   return (
-    <div className="space-y-3">
+    <div className="grid grid-cols-2 gap-6">
       {sessions.map((session) => (
         <Link
           key={session.id}
@@ -32,8 +32,8 @@ export function SessionList({ sessions, projectId }: SessionListProps) {
         >
           <Card className="transition-colors hover:bg-muted/50">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium leading-snug line-clamp-2">
-                {session.summary}
+              <CardTitle className="text-sm text-chart-1 font-medium leading-snug line-clamp-2">
+                {session.summary || (session.id.startsWith('agent-') ? 'Agent Session' : 'Untitled Session')}
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-0 space-y-2">

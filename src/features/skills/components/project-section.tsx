@@ -26,7 +26,7 @@ import { Checkbox } from '@/shared/components/ui/checkbox'
 import { ChevronDown } from 'lucide-react'
 import { SkillCard } from './skill-card'
 import { MarkdownViewer } from './markdown-viewer'
-import type { ProjectSkillsConfig } from '@/shared/services/skills/types'
+import type { ProjectSkillsConfig } from '@/shared/types/skills'
 import type { SelectedItem } from '../page'
 
 interface ProjectOption {

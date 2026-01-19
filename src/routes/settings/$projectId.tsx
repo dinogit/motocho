@@ -1,23 +1,28 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { DetailPage } from '@/features/settings/detail-page.tsx'
-import { getSettingsData } from '@/shared/services/settings/server-functions'
-import { getSkillsData } from '@/shared/services/skills/server-functions'
-import { getMcpData } from '@/shared/services/mcp/server-functions'
+import { invoke } from '@tauri-apps/api/core'
+import { DetailPage } from '@/features/settings/detail-page'
+import type { SettingsDashboardData } from '@/shared/types/settings'
+import type { SkillsDashboardData } from '@/shared/types/skills'
+import type { McpDashboardData } from '@/shared/types/mcp'
+
+function decodeProjectPath(encoded: string): string {
+  return atob(decodeURIComponent(encoded))
+}
 
 export const Route = createFileRoute('/settings/$projectId')({
   loader: async ({ params }) => {
     // Decode project path from URL
-    const projectPath = atob(decodeURIComponent(params.projectId))
+    const projectPath = decodeProjectPath(params.projectId)
 
     // Load data for this specific project
     const [settings, skills, mcp] = await Promise.all([
-      getSettingsData({ data: { projectPath } }),
-      getSkillsData(),
-      getMcpData(),
+      invoke<SettingsDashboardData>('get_settings_data', { projectPath }),
+      invoke<SkillsDashboardData>('get_skills_data'),
+      invoke<McpDashboardData>('get_mcp_data'),
     ])
 
     // Get project name
-    const project = skills.allProjects.find(p => p.path === projectPath)
+    const project = (skills as any)?.allProjects.find((p: any) => p.path === projectPath)
     const projectName = project?.name || projectPath
 
     return { settings, skills, mcp, projectPath, projectName }

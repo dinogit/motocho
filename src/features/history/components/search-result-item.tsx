@@ -1,7 +1,7 @@
 import { Link } from '@tanstack/react-router'
 import { Clock, FolderOpen, ArrowRight } from 'lucide-react'
 import { Card, CardContent } from '@/shared/components/ui/card'
-import type { SearchResult } from '@/shared/services/history/types'
+import type { SearchResult } from '@/shared/types/history'
 
 interface SearchResultItemProps {
   result: SearchResult

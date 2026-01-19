@@ -12,7 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui
 import { Badge } from '@/shared/components/ui/badge'
 import { ScrollArea } from '@/shared/components/ui/scroll-area'
 import { Route } from '@/routes/plans/$planId'
-import type { Plan } from '@/shared/services/plans/types'
+import type { Plan } from '@/shared/types/plans'
 
 export function PlanViewPage() {
   const { plan } = Route.useLoaderData() as { plan: Plan }

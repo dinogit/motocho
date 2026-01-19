@@ -4,7 +4,7 @@ import { Button } from '@/shared/components/ui/button'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/shared/components/ui/collapsible'
 import { ClientOnly } from '@/shared/components/client-only'
 import { cn } from '@/shared/lib/utils'
-import type { ToolResultContent } from '@/shared/services/transcripts/types'
+import type { ToolResultContent } from '@/shared/types/transcripts'
 
 interface ToolResultBlockRendererProps {
   content: string | ToolResultContent[]

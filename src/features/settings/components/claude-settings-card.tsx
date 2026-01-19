@@ -18,8 +18,8 @@ import {
     SelectValue,
 } from '@/shared/components/ui/select'
 import { Loader2, RefreshCw, Brain, Sparkles, Wrench } from 'lucide-react'
-import type { Skill } from '@/shared/services/skills/types'
-import type { McpServer } from '@/shared/services/mcp/types'
+import type { Skill } from '@/shared/types/skills'
+import type { McpServer } from '@/shared/types/mcp'
 
 interface ClaudeSettingsCardProps {
     projectPath: string

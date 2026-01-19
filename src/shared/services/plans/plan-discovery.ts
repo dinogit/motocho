@@ -7,7 +7,7 @@
 import { readdir, stat, readFile } from 'fs/promises'
 import { join } from 'path'
 import { homedir } from 'os'
-import type { Plan, PlanSummary } from './types'
+import type { Plan, PlanSummary } from '@/shared/types/plans'
 
 const CLAUDE_PLANS_DIR = join(homedir(), '.claude', 'plans')
 

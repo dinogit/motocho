@@ -12,8 +12,10 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as SkillsRouteImport } from './routes/skills'
 import { Route as McpRouteImport } from './routes/mcp'
 import { Route as HistoryRouteImport } from './routes/history'
+import { Route as CommandsRouteImport } from './routes/commands'
 import { Route as ClaudeCodeRouteImport } from './routes/claude-code'
 import { Route as AnalyticsRouteImport } from './routes/analytics'
+import { Route as AgentsRouteImport } from './routes/agents'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as TricksAndTipsIndexRouteImport } from './routes/tricks-and-tips/index'
 import { Route as TranscriptsIndexRouteImport } from './routes/transcripts/index'
@@ -22,7 +24,7 @@ import { Route as PlansIndexRouteImport } from './routes/plans/index'
 import { Route as FilesIndexRouteImport } from './routes/files/index'
 import { Route as SettingsProjectIdRouteImport } from './routes/settings/$projectId'
 import { Route as PlansPlanIdRouteImport } from './routes/plans/$planId'
-import { Route as ApiChatRouteImport } from './routes/api/chat'
+import { Route as AgentsNameRouteImport } from './routes/agents.$name'
 import { Route as TranscriptsProjectIdIndexRouteImport } from './routes/transcripts/$projectId/index'
 import { Route as FilesSessionIdIndexRouteImport } from './routes/files/$sessionId/index'
 import { Route as TranscriptsProjectIdSessionIdRouteImport } from './routes/transcripts/$projectId/$sessionId'
@@ -43,6 +45,11 @@ const HistoryRoute = HistoryRouteImport.update({
   path: '/history',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CommandsRoute = CommandsRouteImport.update({
+  id: '/commands',
+  path: '/commands',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ClaudeCodeRoute = ClaudeCodeRouteImport.update({
   id: '/claude-code',
   path: '/claude-code',
@@ -51,6 +58,11 @@ const ClaudeCodeRoute = ClaudeCodeRouteImport.update({
 const AnalyticsRoute = AnalyticsRouteImport.update({
   id: '/analytics',
   path: '/analytics',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AgentsRoute = AgentsRouteImport.update({
+  id: '/agents',
+  path: '/agents',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -93,10 +105,10 @@ const PlansPlanIdRoute = PlansPlanIdRouteImport.update({
   path: '/plans/$planId',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiChatRoute = ApiChatRouteImport.update({
-  id: '/api/chat',
-  path: '/api/chat',
-  getParentRoute: () => rootRouteImport,
+const AgentsNameRoute = AgentsNameRouteImport.update({
+  id: '/$name',
+  path: '/$name',
+  getParentRoute: () => AgentsRoute,
 } as any)
 const TranscriptsProjectIdIndexRoute =
   TranscriptsProjectIdIndexRouteImport.update({
@@ -123,12 +135,14 @@ const FilesSessionIdFileHashRoute = FilesSessionIdFileHashRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/agents': typeof AgentsRouteWithChildren
   '/analytics': typeof AnalyticsRoute
   '/claude-code': typeof ClaudeCodeRoute
+  '/commands': typeof CommandsRoute
   '/history': typeof HistoryRoute
   '/mcp': typeof McpRoute
   '/skills': typeof SkillsRoute
-  '/api/chat': typeof ApiChatRoute
+  '/agents/$name': typeof AgentsNameRoute
   '/plans/$planId': typeof PlansPlanIdRoute
   '/settings/$projectId': typeof SettingsProjectIdRoute
   '/files': typeof FilesIndexRoute
@@ -143,12 +157,14 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/agents': typeof AgentsRouteWithChildren
   '/analytics': typeof AnalyticsRoute
   '/claude-code': typeof ClaudeCodeRoute
+  '/commands': typeof CommandsRoute
   '/history': typeof HistoryRoute
   '/mcp': typeof McpRoute
   '/skills': typeof SkillsRoute
-  '/api/chat': typeof ApiChatRoute
+  '/agents/$name': typeof AgentsNameRoute
   '/plans/$planId': typeof PlansPlanIdRoute
   '/settings/$projectId': typeof SettingsProjectIdRoute
   '/files': typeof FilesIndexRoute
@@ -164,12 +180,14 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/agents': typeof AgentsRouteWithChildren
   '/analytics': typeof AnalyticsRoute
   '/claude-code': typeof ClaudeCodeRoute
+  '/commands': typeof CommandsRoute
   '/history': typeof HistoryRoute
   '/mcp': typeof McpRoute
   '/skills': typeof SkillsRoute
-  '/api/chat': typeof ApiChatRoute
+  '/agents/$name': typeof AgentsNameRoute
   '/plans/$planId': typeof PlansPlanIdRoute
   '/settings/$projectId': typeof SettingsProjectIdRoute
   '/files/': typeof FilesIndexRoute
@@ -186,12 +204,14 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/agents'
     | '/analytics'
     | '/claude-code'
+    | '/commands'
     | '/history'
     | '/mcp'
     | '/skills'
-    | '/api/chat'
+    | '/agents/$name'
     | '/plans/$planId'
     | '/settings/$projectId'
     | '/files'
@@ -206,12 +226,14 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/agents'
     | '/analytics'
     | '/claude-code'
+    | '/commands'
     | '/history'
     | '/mcp'
     | '/skills'
-    | '/api/chat'
+    | '/agents/$name'
     | '/plans/$planId'
     | '/settings/$projectId'
     | '/files'
@@ -226,12 +248,14 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/agents'
     | '/analytics'
     | '/claude-code'
+    | '/commands'
     | '/history'
     | '/mcp'
     | '/skills'
-    | '/api/chat'
+    | '/agents/$name'
     | '/plans/$planId'
     | '/settings/$projectId'
     | '/files/'
@@ -247,12 +271,13 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AgentsRoute: typeof AgentsRouteWithChildren
   AnalyticsRoute: typeof AnalyticsRoute
   ClaudeCodeRoute: typeof ClaudeCodeRoute
+  CommandsRoute: typeof CommandsRoute
   HistoryRoute: typeof HistoryRoute
   McpRoute: typeof McpRoute
   SkillsRoute: typeof SkillsRoute
-  ApiChatRoute: typeof ApiChatRoute
   PlansPlanIdRoute: typeof PlansPlanIdRoute
   SettingsProjectIdRoute: typeof SettingsProjectIdRoute
   FilesIndexRoute: typeof FilesIndexRoute
@@ -289,6 +314,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof HistoryRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/commands': {
+      id: '/commands'
+      path: '/commands'
+      fullPath: '/commands'
+      preLoaderRoute: typeof CommandsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/claude-code': {
       id: '/claude-code'
       path: '/claude-code'
@@ -301,6 +333,13 @@ declare module '@tanstack/react-router' {
       path: '/analytics'
       fullPath: '/analytics'
       preLoaderRoute: typeof AnalyticsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/agents': {
+      id: '/agents'
+      path: '/agents'
+      fullPath: '/agents'
+      preLoaderRoute: typeof AgentsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -359,12 +398,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PlansPlanIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/chat': {
-      id: '/api/chat'
-      path: '/api/chat'
-      fullPath: '/api/chat'
-      preLoaderRoute: typeof ApiChatRouteImport
-      parentRoute: typeof rootRouteImport
+    '/agents/$name': {
+      id: '/agents/$name'
+      path: '/$name'
+      fullPath: '/agents/$name'
+      preLoaderRoute: typeof AgentsNameRouteImport
+      parentRoute: typeof AgentsRoute
     }
     '/transcripts/$projectId/': {
       id: '/transcripts/$projectId/'
@@ -397,14 +436,26 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AgentsRouteChildren {
+  AgentsNameRoute: typeof AgentsNameRoute
+}
+
+const AgentsRouteChildren: AgentsRouteChildren = {
+  AgentsNameRoute: AgentsNameRoute,
+}
+
+const AgentsRouteWithChildren =
+  AgentsRoute._addFileChildren(AgentsRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AgentsRoute: AgentsRouteWithChildren,
   AnalyticsRoute: AnalyticsRoute,
   ClaudeCodeRoute: ClaudeCodeRoute,
+  CommandsRoute: CommandsRoute,
   HistoryRoute: HistoryRoute,
   McpRoute: McpRoute,
   SkillsRoute: SkillsRoute,
-  ApiChatRoute: ApiChatRoute,
   PlansPlanIdRoute: PlansPlanIdRoute,
   SettingsProjectIdRoute: SettingsProjectIdRoute,
   FilesIndexRoute: FilesIndexRoute,
@@ -420,12 +471,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-  }
-}
