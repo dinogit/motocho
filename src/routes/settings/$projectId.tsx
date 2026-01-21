@@ -26,11 +26,15 @@ export const Route = createFileRoute('/settings/$projectId')({
       }),
       invoke<SkillsDashboardData>('get_skills_data').catch((error) => {
         console.error('Failed to load skills data:', error)
-        return { globalSkills: [], projects: [], allProjects: [] } as SkillsDashboardData
+        return {
+          globalSkills: [],
+          projects: [],
+          allProjects: []
+        } as unknown as SkillsDashboardData
       }),
       invoke<McpDashboardData>('get_mcp_data').catch((error) => {
         console.error('Failed to load MCP data:', error)
-        return { globalServers: [], projects: [], allProjects: [] } as McpDashboardData
+        return { globalServers: [], projects: [], allProjects: [] } as unknown as  McpDashboardData
       }),
     ])
 
