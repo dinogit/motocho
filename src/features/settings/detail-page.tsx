@@ -96,8 +96,8 @@ export function DetailPage() {
             </PageHeader>
             <ClaudeSettingsCard
                 projectPath={projectPath}
-                currentModel={settings.projects[projectPath]?.model || settings.global.model}
-                thinkingEnabled={settings.global.thinking || false}
+                currentModel={settings.projects?.[projectPath]?.model || settings.global?.model}
+                thinkingEnabled={settings.global?.thinking || false}
                 skills={projectSkills}
                 mcpServers={projectMcpServers}
                 onModelChange={handleModelChange}

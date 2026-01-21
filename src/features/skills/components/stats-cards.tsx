@@ -50,8 +50,8 @@ export function StatsCards({ stats }: StatsCardsProps) {
         <Card key={card.label}>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-primary/10">
-                <card.icon className="h-5 w-5 text-primary" />
+              <div className="p-2 rounded-lg bg-background">
+                <card.icon className="h-5 w-5 text-chart-1" />
               </div>
               <div>
                 <p className="text-2xl font-bold">{card.value}</p>

@@ -1,4 +1,4 @@
-import { User, Bot, Coins, MessageSquare, Activity } from 'lucide-react'
+import { User, Bot, Coins, MessageSquare, Activity, Webhook } from 'lucide-react'
 import { cn } from '@/shared/lib/utils'
 import { Card, CardContent } from '@/shared/components/ui/card'
 import { Avatar, AvatarFallback } from '@/shared/components/ui/avatar'
@@ -6,7 +6,9 @@ import { Badge } from '@/shared/components/ui/badge'
 import { Button } from '@/shared/components/ui/button'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/shared/components/ui/tooltip'
 import { ContentBlockRenderer } from './content-block-renderer'
+
 import type { Message } from '@/shared/types/transcripts'
+import {HookBlock} from "@/features/transcripts/components/blocks/hook-block.tsx";
 
 interface MessageBlockProps {
   message: Message
@@ -18,7 +20,52 @@ interface MessageBlockProps {
 export function MessageBlock({ message, onAsk, projectId, sessionId }: MessageBlockProps) {
   const isUser = message.type === 'user'
   const isProgress = message.type === 'progress'
+  const isHook = message.type === 'hook'
   const usage = message.usage
+
+  // Handle hook rendering separately
+  if (isHook) {
+    const hookBlock = message.content[0]
+    return (
+      <div className="flex gap-3 flex-row">
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Avatar className="h-8 w-8 shrink-0 cursor-help bg-chart-5/20">
+                <AvatarFallback className="bg-chart-5/20 text-chart-5">
+                  <Webhook className="h-4 w-4" />
+                </AvatarFallback>
+              </Avatar>
+            </TooltipTrigger>
+            <TooltipContent side="right">
+              <p className="font-medium">Claude Code Hook</p>
+              {hookBlock?.hookEvent && (
+                <p className="text-xs text-muted-foreground">{hookBlock.hookEvent}</p>
+              )}
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+
+        {/*<div className="flex-1">*/}
+        {/*  <div className="flex items-center gap-2 mb-1 text-xs text-muted-foreground">*/}
+        {/*    <span className="font-medium">System Hook</span>*/}
+        {/*    {message.timestamp && (*/}
+        {/*      <span className="text-[10px]">{new Date(message.timestamp).toLocaleTimeString()}</span>*/}
+        {/*    )}*/}
+        {/*  </div>*/}
+        {/*  */}
+        {/*</div>*/}
+        <div className="flex-1">
+          <HookBlock
+              hookEvent={hookBlock?.hookEvent}
+              hookName={hookBlock?.hookName}
+              command={hookBlock?.command}
+              timestamp={message.timestamp}
+          />
+        </div>
+      </div>
+    )
+  }
 
   // Serialize all content blocks to a string for the "Ask" feature
   const getMessageContent = () => {

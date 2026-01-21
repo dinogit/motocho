@@ -57,7 +57,7 @@ export interface ProjectStats {
 export interface Message {
   role: 'user' | 'assistant' | 'summary' | 'tool_use' | 'tool_result'
   content: ContentBlock[]
-  type: 'user' | 'assistant' | 'summary' | 'tool_use' | 'tool_result' | 'progress'
+  type: 'user' | 'assistant' | 'summary' | 'tool_use' | 'tool_result' | 'progress' | 'hook'
   usage?: TokenUsage
   model?: string
   timestamp?: string
@@ -148,6 +148,26 @@ export interface AgentProgressData {
   parentToolUseID?: string
   messages?: Message[]
   [key: string]: any
+}
+
+export interface HookProgressData {
+  type: 'hook_progress'
+  hookEvent?: string
+  hookName?: string
+  command?: string
+  [key: string]: any
+}
+
+export interface HookEntry {
+  uuid: string
+  timestamp: string
+  type: 'progress'
+  data: HookProgressData
+  parentToolUseID?: string
+  cwd?: string
+  sessionId?: string
+  version?: string
+  gitBranch?: string
 }
 
 export interface RawSummaryEntry {

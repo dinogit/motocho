@@ -52,8 +52,8 @@ export function Page() {
 
                         // Get project-specific settings
                         const projectSettings = settingsMap[project.path]
-                        const model = projectSettings?.projects[project.path]?.model || projectSettings?.global.model
-                        const thinkingEnabled = projectSettings?.global.thinking ?? false
+                        const model = projectSettings?.projects?.[project.path]?.model || projectSettings?.global?.model
+                        const thinkingEnabled = projectSettings?.global?.thinking ?? false
 
                         return (
                             <ProjectSettingsCard

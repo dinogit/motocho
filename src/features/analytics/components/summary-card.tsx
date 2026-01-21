@@ -12,7 +12,7 @@ export function SummaryCard({ title, value, description, icon: Icon }: SummaryCa
     <Card>
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <CardTitle className="text-sm font-medium">{title}</CardTitle>
-        <Icon className="h-4 w-4 text-muted-foreground" />
+        <Icon className="h-4 w-4 text-chart-1" />
       </CardHeader>
       <CardContent>
         <div className="text-2xl font-bold">{value}</div>

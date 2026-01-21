@@ -50,7 +50,7 @@ function App() {
               <Card className="h-full hover:bg-muted/50 transition-colors cursor-pointer">
                 <CardHeader>
                   <div className="flex items-center gap-3">
-                    <link.icon className="h-5 w-5 text-primary" />
+                    <link.icon className="h-5 w-5 text-chart-1" />
                     <CardTitle className="text-lg">{link.title}</CardTitle>
                   </div>
                   <CardDescription>{link.description}</CardDescription>

@@ -1,5 +1,5 @@
-import { useState, useMemo } from 'react'
-import { Bot, Activity, Loader2, Wand2, Coins } from 'lucide-react'
+import React, { useState, useMemo } from 'react'
+import {Bot, Activity, Loader2, Wand2, Coins, MessageSquare, FileCode, Clock} from 'lucide-react'
 import { Button } from '@/shared/components/ui/button'
 import {
     Sheet,
@@ -12,6 +12,9 @@ import { ScrollArea } from '@/shared/components/ui/scroll-area'
 import { getAgentTranscript } from '@/shared/services/transcripts/client'
 import { MessageBlock } from '../message-block'
 import type { Message } from '@/shared/types/transcripts'
+import {StatItem} from "@/features/transcripts/components/session-card.tsx";
+import {Badge} from "@/shared/components/ui/badge.tsx";
+import {Status, StatusLabel} from "@/shared/components/ui/status.tsx";
 
 interface AgentLaunchBlockProps {
     input: Record<string, any>
@@ -235,29 +238,36 @@ export function AgentLaunchBlock({ input, projectId, sessionId, agentId: propsAg
                                         {!isLoadingWorkshop && !workshopError && metrics.messageCount > 0 && (
                                             <div className="flex items-center gap-3 flex-wrap pt-2">
                                                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                                    <span className="font-medium">{metrics.messageCount} messages</span>
-                                                    <span>•</span>
-                                                    <span className="font-medium">{formatDuration(metrics.durationMs)}</span>
-                                                    <span>•</span>
-                                                    <div className="flex items-center gap-1">
-                                                        <Coins className="h-3 w-3" />
-                                                        <span className="font-mono">{metrics.tokenBreakdown.totalTokens.toLocaleString()}</span>
-                                                        <span>${metrics.tokenBreakdown.costUsd.toFixed(4)}</span>
-                                                    </div>
-                                                    {metrics.tokenBreakdown.inputTokens > 0 && (
-                                                        <>
-                                                            <span>•</span>
-                                                            <span className="text-[11px]">
-                                                                in: {metrics.tokenBreakdown.inputTokens.toLocaleString()} out: {metrics.tokenBreakdown.outputTokens.toLocaleString()}
-                                                            </span>
-                                                        </>
-                                                    )}
+                                                    <StatItem
+                                                        icon={<FileCode className="h-4 w-4" />}
+                                                        value={metrics.messageCount}
+                                                        label="messages"
+                                                        color="text-chart-1"
+                                                    />
+                                                    <StatItem
+                                                        icon={<Clock className="h-4 w-4" />}
+                                                        value={formatDuration(metrics.durationMs)}
+                                                        label="minutes"
+                                                        color="text-chart-1"
+                                                    />
+                                                    <StatItem
+                                                        icon={<Coins className="h-4 w-4" />}
+                                                        value={metrics.tokenBreakdown.inputTokens + metrics.tokenBreakdown.outputTokens}
+                                                        label="tokens"
+                                                        color="text-chart-1"
+                                                    />
+
                                                     {metrics.toolsUsed.length > 0 && (
                                                         <>
-                                                            <span>•</span>
+                                                            {/*<span className="text-[11px]">*/}
+                                                            {/*    tools: {metrics.toolsUsed.map(t => `${t.name}(${t.count})`).join(', ')}*/}
+                                                            {/*</span>*/}
                                                             <span className="text-[11px]">
-                                                                tools: {metrics.toolsUsed.map(t => `${t.name}(${t.count})`).join(', ')}
+                                                                tools:
                                                             </span>
+                                                            {metrics.toolsUsed.map(t => <><Status variant="info">
+                                                                <StatusLabel>{t.name}({t.count})</StatusLabel>
+                                                            </Status></>)}
                                                         </>
                                                     )}
                                                 </div>

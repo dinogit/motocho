@@ -21,9 +21,11 @@ import { Route as TricksAndTipsIndexRouteImport } from './routes/tricks-and-tips
 import { Route as TranscriptsIndexRouteImport } from './routes/transcripts/index'
 import { Route as SettingsIndexRouteImport } from './routes/settings/index'
 import { Route as PlansIndexRouteImport } from './routes/plans/index'
+import { Route as HooksIndexRouteImport } from './routes/hooks/index'
 import { Route as FilesIndexRouteImport } from './routes/files/index'
 import { Route as SettingsProjectIdRouteImport } from './routes/settings/$projectId'
 import { Route as PlansPlanIdRouteImport } from './routes/plans/$planId'
+import { Route as HooksIdRouteImport } from './routes/hooks/$id'
 import { Route as AgentsNameRouteImport } from './routes/agents.$name'
 import { Route as TranscriptsProjectIdIndexRouteImport } from './routes/transcripts/$projectId/index'
 import { Route as FilesSessionIdIndexRouteImport } from './routes/files/$sessionId/index'
@@ -90,6 +92,11 @@ const PlansIndexRoute = PlansIndexRouteImport.update({
   path: '/plans/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const HooksIndexRoute = HooksIndexRouteImport.update({
+  id: '/hooks/',
+  path: '/hooks/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const FilesIndexRoute = FilesIndexRouteImport.update({
   id: '/files/',
   path: '/files/',
@@ -103,6 +110,11 @@ const SettingsProjectIdRoute = SettingsProjectIdRouteImport.update({
 const PlansPlanIdRoute = PlansPlanIdRouteImport.update({
   id: '/plans/$planId',
   path: '/plans/$planId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HooksIdRoute = HooksIdRouteImport.update({
+  id: '/hooks/$id',
+  path: '/hooks/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AgentsNameRoute = AgentsNameRouteImport.update({
@@ -143,9 +155,11 @@ export interface FileRoutesByFullPath {
   '/mcp': typeof McpRoute
   '/skills': typeof SkillsRoute
   '/agents/$name': typeof AgentsNameRoute
+  '/hooks/$id': typeof HooksIdRoute
   '/plans/$planId': typeof PlansPlanIdRoute
   '/settings/$projectId': typeof SettingsProjectIdRoute
   '/files': typeof FilesIndexRoute
+  '/hooks': typeof HooksIndexRoute
   '/plans': typeof PlansIndexRoute
   '/settings': typeof SettingsIndexRoute
   '/transcripts': typeof TranscriptsIndexRoute
@@ -165,9 +179,11 @@ export interface FileRoutesByTo {
   '/mcp': typeof McpRoute
   '/skills': typeof SkillsRoute
   '/agents/$name': typeof AgentsNameRoute
+  '/hooks/$id': typeof HooksIdRoute
   '/plans/$planId': typeof PlansPlanIdRoute
   '/settings/$projectId': typeof SettingsProjectIdRoute
   '/files': typeof FilesIndexRoute
+  '/hooks': typeof HooksIndexRoute
   '/plans': typeof PlansIndexRoute
   '/settings': typeof SettingsIndexRoute
   '/transcripts': typeof TranscriptsIndexRoute
@@ -188,9 +204,11 @@ export interface FileRoutesById {
   '/mcp': typeof McpRoute
   '/skills': typeof SkillsRoute
   '/agents/$name': typeof AgentsNameRoute
+  '/hooks/$id': typeof HooksIdRoute
   '/plans/$planId': typeof PlansPlanIdRoute
   '/settings/$projectId': typeof SettingsProjectIdRoute
   '/files/': typeof FilesIndexRoute
+  '/hooks/': typeof HooksIndexRoute
   '/plans/': typeof PlansIndexRoute
   '/settings/': typeof SettingsIndexRoute
   '/transcripts/': typeof TranscriptsIndexRoute
@@ -212,9 +230,11 @@ export interface FileRouteTypes {
     | '/mcp'
     | '/skills'
     | '/agents/$name'
+    | '/hooks/$id'
     | '/plans/$planId'
     | '/settings/$projectId'
     | '/files'
+    | '/hooks'
     | '/plans'
     | '/settings'
     | '/transcripts'
@@ -234,9 +254,11 @@ export interface FileRouteTypes {
     | '/mcp'
     | '/skills'
     | '/agents/$name'
+    | '/hooks/$id'
     | '/plans/$planId'
     | '/settings/$projectId'
     | '/files'
+    | '/hooks'
     | '/plans'
     | '/settings'
     | '/transcripts'
@@ -256,9 +278,11 @@ export interface FileRouteTypes {
     | '/mcp'
     | '/skills'
     | '/agents/$name'
+    | '/hooks/$id'
     | '/plans/$planId'
     | '/settings/$projectId'
     | '/files/'
+    | '/hooks/'
     | '/plans/'
     | '/settings/'
     | '/transcripts/'
@@ -278,9 +302,11 @@ export interface RootRouteChildren {
   HistoryRoute: typeof HistoryRoute
   McpRoute: typeof McpRoute
   SkillsRoute: typeof SkillsRoute
+  HooksIdRoute: typeof HooksIdRoute
   PlansPlanIdRoute: typeof PlansPlanIdRoute
   SettingsProjectIdRoute: typeof SettingsProjectIdRoute
   FilesIndexRoute: typeof FilesIndexRoute
+  HooksIndexRoute: typeof HooksIndexRoute
   PlansIndexRoute: typeof PlansIndexRoute
   SettingsIndexRoute: typeof SettingsIndexRoute
   TranscriptsIndexRoute: typeof TranscriptsIndexRoute
@@ -377,6 +403,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PlansIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/hooks/': {
+      id: '/hooks/'
+      path: '/hooks'
+      fullPath: '/hooks'
+      preLoaderRoute: typeof HooksIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/files/': {
       id: '/files/'
       path: '/files'
@@ -396,6 +429,13 @@ declare module '@tanstack/react-router' {
       path: '/plans/$planId'
       fullPath: '/plans/$planId'
       preLoaderRoute: typeof PlansPlanIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/hooks/$id': {
+      id: '/hooks/$id'
+      path: '/hooks/$id'
+      fullPath: '/hooks/$id'
+      preLoaderRoute: typeof HooksIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/agents/$name': {
@@ -456,9 +496,11 @@ const rootRouteChildren: RootRouteChildren = {
   HistoryRoute: HistoryRoute,
   McpRoute: McpRoute,
   SkillsRoute: SkillsRoute,
+  HooksIdRoute: HooksIdRoute,
   PlansPlanIdRoute: PlansPlanIdRoute,
   SettingsProjectIdRoute: SettingsProjectIdRoute,
   FilesIndexRoute: FilesIndexRoute,
+  HooksIndexRoute: HooksIndexRoute,
   PlansIndexRoute: PlansIndexRoute,
   SettingsIndexRoute: SettingsIndexRoute,
   TranscriptsIndexRoute: TranscriptsIndexRoute,

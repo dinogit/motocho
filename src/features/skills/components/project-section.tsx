@@ -70,8 +70,8 @@ export function ProjectSection({
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-primary/10">
-                <FolderOpen className="h-5 w-5 text-primary" />
+              <div className="p-2 rounded-lg bg-background">
+                <FolderOpen className="h-5 w-5 text-chart-1" />
               </div>
               <div>
                 <CardTitle className="text-lg">{project.projectName}</CardTitle>

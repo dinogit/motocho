@@ -23,6 +23,7 @@ import {
   Bot,
   Settings,
   Terminal,
+  Webhook,
 } from "lucide-react"
 
 import { NavMain, type NavItem } from "@/shared/components/navigation/nav-main"
@@ -90,6 +91,11 @@ const staticNavItems: NavItem[] = [
     title: "Commands",
     url: "/commands",
     icon: Terminal,
+  },
+  {
+    title: "Hooks",
+    url: "/hooks",
+    icon: Webhook,
   },
   {
     title: "Settings",

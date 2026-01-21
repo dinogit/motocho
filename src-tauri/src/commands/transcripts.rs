@@ -380,6 +380,41 @@ fn transform_message(entry: &RawLogEntry) -> Message {
     }
 }
 
+fn transform_hook_message(entry: &RawLogEntry) -> Option<Message> {
+    // Check if this is a hook_progress entry
+    if entry.entry_type != "progress" {
+        return None;
+    }
+
+    if let Some(data) = entry._extra.get("data") {
+        if data.get("type").and_then(|t| t.as_str()) != Some("hook_progress") {
+            return None;
+        }
+
+        let hook_event = data.get("hookEvent").and_then(|h| h.as_str()).unwrap_or("unknown");
+        let hook_name = data.get("hookName").and_then(|h| h.as_str()).unwrap_or(hook_event);
+        let command = data.get("command").and_then(|c| c.as_str()).unwrap_or("");
+
+        let content = vec![serde_json::json!({
+            "type": "hook",
+            "hookEvent": hook_event,
+            "hookName": hook_name,
+            "command": command,
+        })];
+
+        return Some(Message {
+            uuid: entry.uuid.clone().unwrap_or_default(),
+            msg_type: "hook".to_string(),
+            timestamp: entry.timestamp.clone(),
+            content,
+            model: None,
+            usage: None,
+        });
+    }
+
+    None
+}
+
 fn sum_session_metrics(entries: &[RawLogEntry]) -> (f64, u64) {
     let mut total_cost = 0.0;
     let mut total_duration = 0;
@@ -718,6 +753,12 @@ pub async fn get_session_details(project_id: String, session_id: String, page: O
     let mut tool_use_map: HashMap<String, usize> = HashMap::new(); // tool_use_id -> message index
 
     for entry in entries {
+        // Try to parse as hook first
+        if let Some(hook_msg) = transform_hook_message(&entry) {
+            messages.push(hook_msg);
+            continue;
+        }
+
         // We only care about user, assistant, and agent_progress for the transcript
         if entry.entry_type != "user" && entry.entry_type != "assistant" && entry.entry_type != "agent_progress" {
             continue;
@@ -837,6 +878,12 @@ pub async fn get_session_paginated(project_id: String, session_id: String, page:
     let mut tool_use_map: HashMap<String, usize> = HashMap::new();
 
     for entry in entries {
+        // Try to parse as hook first
+        if let Some(hook_msg) = transform_hook_message(&entry) {
+            messages.push(hook_msg);
+            continue;
+        }
+
         if entry.entry_type != "user" && entry.entry_type != "assistant" && entry.entry_type != "agent_progress" {
             continue;
         }

@@ -203,7 +203,7 @@ export function SessionCard({
   )
 }
 
-function StatItem({
+export function StatItem({
   icon,
   value,
   label,

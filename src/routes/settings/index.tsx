@@ -16,11 +16,21 @@ export const Route = createFileRoute('/settings/')({
     // Get all projects
     const allProjects = (skills as any)?.allProjects || []
 
-    // Load settings for each project
+    // Load settings for each project with error handling
     const projectSettings = await Promise.all(
-      allProjects.map((project: any) =>
-        invoke<SettingsDashboardData>('get_settings_data', { projectPath: project.path })
-      )
+      allProjects.map(async (project: any) => {
+        try {
+          return await invoke<SettingsDashboardData>('get_settings_data', { projectPath: project.path })
+        } catch (error) {
+          console.error(`Failed to load settings for ${project.path}:`, error)
+          // Return default settings structure if loading fails
+          return {
+            global: {},
+            projects: {},
+            allProjects: []
+          } as SettingsDashboardData
+        }
+      })
     )
 
     // Create object of project path -> settings (Map doesn't serialize to JSON)
