@@ -18,9 +18,6 @@ export function Page() {
   const navigate = useNavigate()
   const searchParams = Route.useSearch() as { page?: number }
 
-  console.log({ projectId, sessionId })
-  console.log({ searchParams })
-
   const [isRefreshing, setIsRefreshing] = useState(false)
 
   // Chat drawer state

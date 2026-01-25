@@ -42,14 +42,14 @@ export function PluginCard({ plugin }: PluginCardProps) {
   const serverUrl = httpConfig?.url
 
   return (
-    <Card className={plugin.isInstalled ? 'border-primary/50' : ''}>
+    <Card className={plugin.isInstalled ? 'border-chart-1/50' : ''}>
       <CardContent className="p-4">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
             {/* Plugin icon */}
-            <div className={`p-2 rounded-lg ${plugin.isInstalled ? 'bg-primary/10' : 'bg-muted'}`}>
+            <div className={`p-2 rounded-lg ${plugin.isInstalled ? 'bg-chart-1/10' : 'bg-muted'}`}>
               {plugin.isInstalled ? (
-                <PackageCheck className="h-5 w-5 text-primary" />
+                <PackageCheck className="h-5 w-5 text-chart-1" />
               ) : (
                 <Package className="h-5 w-5 text-muted-foreground" />
               )}

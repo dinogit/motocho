@@ -16,6 +16,9 @@ pub mod settings;
 pub mod library;
 pub mod agents;
 pub mod commands;
+pub mod plugins;
+pub mod reports;
+pub mod auth;
 
 // Re-export all commands
 pub use fs_utils::*;
@@ -31,3 +34,6 @@ pub use settings::*;
 pub use library::*;
 pub use agents::*;
 pub use commands::*;
+pub use plugins::*;
+pub use reports::*;
+pub use auth::*;

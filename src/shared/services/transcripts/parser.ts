@@ -333,6 +333,24 @@ function normalizeContent(
   return content.map((block) => {
     switch (block.type) {
       case 'text':
+        // Check for command XML pattern (legacy/slash commands)
+        const text = block.text || ''
+        const commandMatch = text.match(/<command-name>(.*?)<\/command-name>/)
+        if (commandMatch) {
+          const commandName = commandMatch[1]
+          const messageMatch = block.text.match(/<command-message>(.*?)<\/command-message>/)
+          const message = messageMatch ? messageMatch[1] : block.text
+
+          return {
+            type: 'tool_use',
+            id: `cmd_${Math.random().toString(36).substr(2, 9)}`,
+            name: 'Command',
+            input: {
+              command: commandName,
+              message: message
+            }
+          }
+        }
         return { type: 'text', text: block.text }
       case 'tool_use':
         return {

@@ -71,6 +71,24 @@ pub struct SessionStats {
     pub end_timestamp: Option<String>,
     #[serde(rename = "gitBranch")]
     pub git_branch: Option<String>,
+    #[serde(rename = "health")]
+    pub health: Option<SessionHealth>,
+    #[serde(rename = "toolBreakdown")]
+    pub tool_breakdown: Option<HashMap<String, usize>>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SessionHealth {
+    #[serde(rename = "promptsPerHour")]
+    pub prompts_per_hour: f64,
+    #[serde(rename = "toolCallsPerPrompt")]
+    pub tool_calls_per_prompt: f64,
+    #[serde(rename = "assistantMessagesPerPrompt")]
+    pub assistant_messages_per_prompt: f64,
+    #[serde(rename = "tokensPerMinute")]
+    pub tokens_per_minute: f64,
+    pub status: String, // "healthy", "stalled", "frantic", "expensive"
+    pub verdict: String, // "continue", "constrain", "restart"
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -267,6 +285,82 @@ fn get_file_modified_time(path: &Path) -> i64 {
         .unwrap_or(0)
 }
 
+/// Clean up summary/description text - remove XML tags, commands, truncate
+fn clean_summary(text: &str) -> String {
+    let mut result = text.to_string();
+
+    // Remove XML-like tags
+    let tag_patterns = [
+        "<command-message>", "</command-message>",
+        "<command-name>", "</command-name>",
+        "<local-command-caveat>", "</local-command-caveat>",
+        "<system-reminder>", "</system-reminder>",
+    ];
+    for pattern in tag_patterns {
+        result = result.replace(pattern, "");
+    }
+
+    // Remove lines that are just commands or noise
+    let lines: Vec<&str> = result
+        .lines()
+        .filter(|line| {
+            let trimmed = line.trim();
+            !trimmed.starts_with('/') &&
+            !trimmed.starts_with('<') &&
+            !trimmed.starts_with("Caveat:") &&
+            !trimmed.is_empty()
+        })
+        .collect();
+
+    result = lines.join(" ");
+
+    // Truncate to first sentence or 100 chars
+    let truncated = if let Some(period_pos) = result.find(". ") {
+        if period_pos < 100 {
+            result[..=period_pos].to_string()
+        } else {
+            format!("{}...", result.chars().take(100).collect::<String>().trim())
+        }
+    } else if result.len() > 100 {
+        format!("{}...", result.chars().take(100).collect::<String>().trim())
+    } else {
+        result
+    };
+
+    truncated.trim().to_string()
+}
+
+/// Check if summary is garbage (error messages, vague responses, etc)
+fn is_garbage_summary(text: &str) -> bool {
+    let lower = text.to_lowercase().trim().to_string();
+
+    // Error/system messages
+    let garbage_patterns = [
+        "hit your limit", "rate limit", "resets", "timed out",
+        "caveat:", "<command", "<local-command", "<system-reminder",
+        "pnpm", "npm", "cargo", "error:", "warning:",
+    ];
+    for pattern in garbage_patterns {
+        if lower.contains(pattern) {
+            return true;
+        }
+    }
+
+    // Vague/useless starts
+    let bad_starts = [
+        "yes", "no", "ok", "sure", "please", "thanks", "i want",
+        "can you", "could you", "would you", "first", "but ", "and ",
+        "dont", "don't", "do not",
+    ];
+    for start in bad_starts {
+        if lower.starts_with(start) {
+            return true;
+        }
+    }
+
+    text.trim().len() < 15
+}
+
 async fn read_session_data(session_path: &Path) -> Result<(Vec<RawLogEntry>, String), String> {
     let file = tokio::fs::File::open(session_path)
         .await
@@ -276,7 +370,8 @@ async fn read_session_data(session_path: &Path) -> Result<(Vec<RawLogEntry>, Str
     let mut lines = reader.lines();
     let mut entries = Vec::new();
     let mut summary = String::new();
-    let mut first_user_message = String::new();
+    let mut best_user_message = String::new();
+    let mut best_score = 0;
 
     while let Some(line) = lines
         .next_line()
@@ -291,41 +386,48 @@ async fn read_session_data(session_path: &Path) -> Result<(Vec<RawLogEntry>, Str
         if let Ok(entry) = serde_json::from_str::<RawEntry>(&line) {
             match entry {
                 RawEntry::Summary(s) => {
-                    summary = s.summary;
+                    // Only use summary if it's not garbage
+                    if !is_garbage_summary(&s.summary) {
+                        summary = clean_summary(&s.summary);
+                    }
                     continue;
                 }
-                RawEntry::Other => {} // Fall through to try parsing as Log
+                RawEntry::Other => {}
             }
         }
 
         // Try to parse as RawLogEntry (resilient)
         match serde_json::from_str::<RawLogEntry>(&line) {
             Ok(log_entry) => {
-                // If we don't have a summary yet, try to capture the first user message as a fallback
-                if summary.is_empty() && first_user_message.is_empty() && log_entry.entry_type == "user" {
+                // Collect user messages and find the best one
+                if log_entry.entry_type == "user" {
                     if let Some(message) = &log_entry.message {
-                        match &message.content {
-                            Value::String(s) => {
-                                first_user_message = s.chars().take(100).collect();
-                            }
+                        let text = match &message.content {
+                            Value::String(s) => Some(s.clone()),
                             Value::Array(arr) => {
-                                for block in arr {
-                                    if block.get("type").and_then(|v| v.as_str()) == Some("text") {
-                                        if let Some(text) = block.get("text").and_then(|v| v.as_str()) {
-                                            first_user_message = text.chars().take(100).collect();
-                                            break;
-                                        }
-                                    }
+                                arr.iter()
+                                    .find(|block| block.get("type").and_then(|v| v.as_str()) == Some("text"))
+                                    .and_then(|block| block.get("text").and_then(|v| v.as_str()))
+                                    .map(|s| s.to_string())
+                            }
+                            _ => None,
+                        };
+
+                        if let Some(t) = text {
+                            let cleaned = clean_summary(&t);
+                            if !cleaned.is_empty() && !is_garbage_summary(&cleaned) {
+                                let score = score_user_message(&cleaned);
+                                if score > best_score {
+                                    best_score = score;
+                                    best_user_message = cleaned;
                                 }
                             }
-                            _ => {}
                         }
                     }
                 }
                 entries.push(log_entry);
             }
             Err(e) => {
-                // Only log if it's a type we expect to parse but failed
                 if let Ok(type_check) = serde_json::from_str::<LogEntryType>(&line) {
                     if type_check.entry_type == "user" || type_check.entry_type == "assistant" {
                         log::warn!("Failed to parse {} entry: {}. Line: {}", type_check.entry_type, e, line);
@@ -335,12 +437,96 @@ async fn read_session_data(session_path: &Path) -> Result<(Vec<RawLogEntry>, Str
         }
     }
 
-    // Use first user message if summary is missing
-    if summary.is_empty() && !first_user_message.is_empty() {
-        summary = first_user_message;
+    // Try to generate a better title from files changed
+    let file_title = generate_title_from_files(&entries);
+
+    // Priority: 1) Good summary, 2) File-based title, 3) Best user message
+    if summary.is_empty() || is_garbage_summary(&summary) {
+        if let Some(ft) = file_title {
+            summary = ft;
+        } else if !best_user_message.is_empty() {
+            summary = best_user_message;
+        }
     }
 
     Ok((entries, summary))
+}
+
+/// Score a user message for how descriptive it is
+fn score_user_message(text: &str) -> i32 {
+    let mut score = 0;
+    let lower = text.to_lowercase();
+
+    // Prefer messages with action words
+    let action_words = ["implement", "add", "create", "fix", "update", "build", "make",
+                        "configure", "integrate", "refactor", "improve", "change"];
+    for word in action_words {
+        if lower.contains(word) {
+            score += 10;
+        }
+    }
+
+    // Prefer medium-length messages
+    if text.len() > 20 && text.len() < 100 {
+        score += 5;
+    }
+
+    // Penalize questions
+    if lower.starts_with("can you") || lower.starts_with("how") || lower.starts_with("what") {
+        score -= 3;
+    }
+
+    score
+}
+
+/// Generate a title from files changed in the session
+fn generate_title_from_files(entries: &[RawLogEntry]) -> Option<String> {
+    let mut files: Vec<String> = Vec::new();
+
+    for entry in entries {
+        if entry.entry_type != "assistant" {
+            continue;
+        }
+
+        if let Some(message) = &entry.message {
+            if let Value::Array(arr) = &message.content {
+                for block in arr {
+                    if block.get("type").and_then(|v| v.as_str()) != Some("tool_use") {
+                        continue;
+                    }
+
+                    let tool_name = block.get("name").and_then(|n| n.as_str()).unwrap_or("");
+
+                    if tool_name == "Edit" || tool_name == "Write" {
+                        if let Some(input) = block.get("input") {
+                            if let Some(file_path) = input.get("file_path").and_then(|p| p.as_str()) {
+                                // Extract just the filename
+                                let filename = file_path.split('/').last().unwrap_or(file_path);
+                                if !files.contains(&filename.to_string()) && files.len() < 5 {
+                                    files.push(filename.to_string());
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if files.is_empty() {
+        return None;
+    }
+
+    // Generate title from file names
+    let title = if files.len() == 1 {
+        format!("Work on {}", files[0])
+    } else if files.len() <= 3 {
+        format!("Changes to {}", files.join(", "))
+    } else {
+        format!("Changes to {} and {} more", files[..2].join(", "), files.len() - 2)
+    };
+
+    Some(title)
 }
 
 async fn read_session_entries(session_path: &Path) -> Result<Vec<RawLogEntry>, String> {
@@ -415,9 +601,10 @@ fn transform_hook_message(entry: &RawLogEntry) -> Option<Message> {
     None
 }
 
-fn sum_session_metrics(entries: &[RawLogEntry]) -> (f64, u64) {
+fn sum_session_metrics(entries: &[RawLogEntry]) -> (f64, u64, u64) {
     let mut total_cost = 0.0;
     let mut total_duration = 0;
+    let mut total_tokens = 0;
 
     for entry in entries {
         let mut entry_cost = 0.0;
@@ -451,9 +638,15 @@ fn sum_session_metrics(entries: &[RawLogEntry]) -> (f64, u64) {
         if let Some(duration) = entry.duration_ms {
             total_duration += duration;
         }
+
+        if let Some(message) = &entry.message {
+            if let Some(usage) = &message.usage {
+                total_tokens += (usage.input_tokens + usage.output_tokens) as u64;
+            }
+        }
     }
 
-    (total_cost, total_duration)
+    (total_cost, total_duration, total_tokens)
 }
 
 fn calculate_manual_cost(model: &str, usage: &RawUsage) -> f64 {
@@ -527,9 +720,10 @@ fn extract_agent_id(value: &Value) -> Option<String> {
     }
 }
 
-fn calculate_session_stats(entries: &[RawLogEntry], total_cost: f64) -> SessionStats {
+fn calculate_session_stats(entries: &[RawLogEntry], total_cost: f64, total_tokens: u64) -> SessionStats {
     let mut prompt_count = 0;
     let mut tool_call_count = 0;
+    let mut tool_counts: HashMap<String, usize> = HashMap::new();
     let mut first_timestamp: Option<DateTime<Utc>> = None;
     let mut last_timestamp: Option<DateTime<Utc>> = None;
     let mut git_branch: Option<String> = None;
@@ -563,6 +757,9 @@ fn calculate_session_stats(entries: &[RawLogEntry], total_cost: f64) -> SessionS
                 for block in arr {
                     if let Some("tool_use") = block.get("type").and_then(|v| v.as_str()) {
                         tool_call_count += 1;
+                        if let Some(name) = block.get("name").and_then(|n| n.as_str()) {
+                            *tool_counts.entry(name.to_string()).or_insert(0) += 1;
+                        }
                     }
                 }
             }
@@ -581,6 +778,15 @@ fn calculate_session_stats(entries: &[RawLogEntry], total_cost: f64) -> SessionS
     let start_timestamp = first_timestamp.map(|ts| ts.to_rfc3339());
     let end_timestamp = last_timestamp.map(|ts| ts.to_rfc3339());
 
+    let health = Some(calculate_session_health(
+        prompt_count,
+        tool_call_count,
+        message_count,
+        duration_ms,
+        total_cost,
+        total_tokens,
+    ));
+
     SessionStats {
         prompt_count,
         message_count,
@@ -591,6 +797,103 @@ fn calculate_session_stats(entries: &[RawLogEntry], total_cost: f64) -> SessionS
         start_timestamp,
         end_timestamp,
         git_branch,
+        health,
+        tool_breakdown: Some(tool_counts),
+    }
+}
+
+fn calculate_session_health(
+    prompt_count: usize,
+    tool_call_count: usize,
+    message_count: usize,
+    duration_ms: u64,
+    total_cost_usd: f64,
+    total_tokens: u64,
+) -> SessionHealth {
+    // 1. Prompts per Hour
+    let duration_hours = (duration_ms as f64) / 1000.0 / 3600.0;
+    let prompts_per_hour = if duration_hours > 0.0 {
+        prompt_count as f64 / duration_hours
+    } else {
+        0.0
+    };
+
+    // 2. Tool Call Density
+    let tool_calls_per_prompt = if prompt_count > 0 {
+        tool_call_count as f64 / prompt_count as f64
+    } else {
+        0.0
+    };
+
+    // 3. Message Explosion (Assistant messages per prompt)
+    // Assist msgs ~ (message_count - prompt_count)
+    let assistant_msgs = message_count.saturating_sub(prompt_count);
+    let assistant_messages_per_prompt = if prompt_count > 0 {
+        assistant_msgs as f64 / prompt_count as f64
+    } else {
+        0.0
+    };
+
+    // 4. Token Flux (Tokens per minute)
+    let duration_minutes = (duration_ms as f64) / 1000.0 / 60.0;
+    let tokens_per_minute = if duration_minutes > 0.0 {
+        total_tokens as f64 / duration_minutes
+    } else {
+        0.0
+    };
+
+    // 5. Cost Efficiency (Retained for status calculation but metric is replaced)
+    let cost_per_minute = if duration_minutes > 0.0 {
+        total_cost_usd / duration_minutes
+    } else {
+        0.0
+    };
+
+
+    // Diagnostics logic
+    let mut status = "healthy".to_string();
+    let mut verdict = "continue".to_string();
+
+    // Check for "Frantic" or "Stalled" based on Prompts/Hour
+    if prompts_per_hour > 20.0 {
+        status = "frantic".to_string();
+        verdict = "constrain".to_string();
+    } else if prompts_per_hour < 2.0 && duration_hours > 1.0 {
+        status = "stalled".to_string();
+    }
+
+    // Check for "Looping" based on Tool Density
+    if tool_calls_per_prompt > 8.0 {
+        status = "looping".to_string();
+        verdict = "constrain".to_string();
+    }
+
+    // Check for "Explosion"
+    if assistant_messages_per_prompt > 5.0 {
+        status = "exploding".to_string();
+        verdict = "restart".to_string();
+    }
+
+    // Check for "Expensive" / "Heavy"
+    if tokens_per_minute > 50_000.0 {
+         status = "heavy".to_string(); // Renamed from expensive
+         if prompts_per_hour < 5.0 {
+             verdict = "restart".to_string();
+         }
+    } else if cost_per_minute > 0.50 {
+         status = "expensive".to_string();
+         if prompts_per_hour < 5.0 {
+             verdict = "restart".to_string();
+         }
+    }
+
+    SessionHealth {
+        prompts_per_hour,
+        tool_calls_per_prompt,
+        assistant_messages_per_prompt,
+        tokens_per_minute,
+        status,
+        verdict,
     }
 }
 
@@ -686,8 +989,8 @@ pub async fn get_project_sessions(project_id: String) -> Result<Vec<Session>, St
 
                             // Load session data for summary and stats
                             if let Ok((entries, summary)) = read_session_data(&path).await {
-                                let (total_cost, _) = sum_session_metrics(&entries);
-                                let stats = calculate_session_stats(&entries, total_cost);
+                                let (total_cost, _, total_tokens) = sum_session_metrics(&entries);
+                                let stats = calculate_session_stats(&entries, total_cost, total_tokens);
                                 let last_modified = get_file_modified_time(&path);
 
                                 sessions.push(Session {
@@ -745,8 +1048,8 @@ pub async fn get_session_details(project_id: String, session_id: String, page: O
     }
 
     let (entries, summary) = read_session_data(&session_path).await?;
-    let (total_cost, _) = sum_session_metrics(&entries);
-    let stats = calculate_session_stats(&entries, total_cost);
+    let (total_cost, _, total_tokens) = sum_session_metrics(&entries);
+    let stats = calculate_session_stats(&entries, total_cost, total_tokens);
 
     // Multi-pass parsing to link agent IDs
     let mut messages: Vec<Message> = Vec::new();
@@ -1016,7 +1319,7 @@ pub async fn get_project_stats(project_id: String) -> Result<ProjectStats, Strin
                     last_session = Some(modified);
                 }
 
-                let (session_cost, _) = sum_session_metrics(&entries);
+                let (session_cost, _, _) = sum_session_metrics(&entries);
                 total_cost += session_cost;
 
                 let mut session_first_ts: Option<DateTime<Utc>> = None;

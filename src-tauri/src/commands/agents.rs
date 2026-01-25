@@ -46,7 +46,7 @@ pub struct AgentsDashboardData {
 
 /// Parse agent markdown frontmatter to extract metadata
 /// Returns Agent struct or None if parsing fails
-fn parse_agent_file(content: &str, path: &str, agent_type: &str, plugin_name: Option<String>) -> Option<Agent> {
+pub fn parse_agent_file(content: &str, path: &str, agent_type: &str, plugin_name: Option<String>) -> Option<Agent> {
     let mut name = String::new();
     let mut description = String::new();
     let mut tools: Vec<String> = Vec::new();

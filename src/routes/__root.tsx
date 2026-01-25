@@ -25,7 +25,9 @@ function RootComponent() {
                 <AppSidebar variant="inset" />
                 <SidebarInset>
                     <Outlet />
-                    <TanStackRouterDevtools />
+                    <TanStackRouterDevtools
+                        position="bottom-right"
+                    />
                 </SidebarInset>
             </ThemeProvider>
         </SidebarProvider>

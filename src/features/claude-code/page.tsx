@@ -206,7 +206,7 @@ export function Page() {
     <>
       <PageHeader>
         <PageHeaderContent>
-          <PageTitle>Claude Code Tools</PageTitle>
+          <PageTitle>Tools</PageTitle>
           <PageHeaderSeparator  />
           <PageDescription>
             Reference guide for all internal tools

@@ -13,7 +13,9 @@ import {
   RefreshCw,
   Trash2,
   Loader2,
+  Activity,
 } from "lucide-react"
+import { cn } from "@/shared/lib/utils"
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card"
 import { Button } from "@/shared/components/ui/button"
 import {
@@ -77,7 +79,20 @@ export function SessionCard({
   return (
     <Card className="overflow-hidden border-0 mb-12 bg-primary/5">
       <CardHeader className="pb-3 flex flex-row items-start justify-between space-y-0">
-        <CardTitle className="text-xl font-semibold text-foreground leading-tight pr-4">{session.summary}</CardTitle>
+        <CardTitle className="text-xl font-semibold text-foreground leading-tight pr-4 flex items-center gap-3">
+          {session.summary}
+          {stats?.health && stats.health.status !== 'healthy' && (
+            <div className={cn(
+              "text-[10px] px-1.5 py-0.5 rounded border uppercase tracking-wider font-medium flex items-center gap-1",
+              stats.health.status === 'stalled' ? "text-amber-500 border-amber-500/30 bg-amber-500/10" :
+                stats.health.status === 'expensive' ? "text-amber-500 border-amber-500/30 bg-amber-500/10" :
+                  "text-red-500 border-red-500/30 bg-red-500/10"
+            )}>
+              <Activity className="h-3 w-3" />
+              {stats.health.status}
+            </div>
+          )}
+        </CardTitle>
         <div className="flex items-center gap-1">
           {onRefresh && (
             <Button

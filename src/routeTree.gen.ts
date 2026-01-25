@@ -10,6 +10,8 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SkillsRouteImport } from './routes/skills'
+import { Route as ReportsRouteImport } from './routes/reports'
+import { Route as PluginsRouteImport } from './routes/plugins'
 import { Route as McpRouteImport } from './routes/mcp'
 import { Route as HistoryRouteImport } from './routes/history'
 import { Route as CommandsRouteImport } from './routes/commands'
@@ -20,6 +22,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as TricksAndTipsIndexRouteImport } from './routes/tricks-and-tips/index'
 import { Route as TranscriptsIndexRouteImport } from './routes/transcripts/index'
 import { Route as SettingsIndexRouteImport } from './routes/settings/index'
+import { Route as PluginsIndexRouteImport } from './routes/plugins.index'
 import { Route as PlansIndexRouteImport } from './routes/plans/index'
 import { Route as HooksIndexRouteImport } from './routes/hooks/index'
 import { Route as FilesIndexRouteImport } from './routes/files/index'
@@ -30,11 +33,22 @@ import { Route as AgentsNameRouteImport } from './routes/agents.$name'
 import { Route as TranscriptsProjectIdIndexRouteImport } from './routes/transcripts/$projectId/index'
 import { Route as FilesSessionIdIndexRouteImport } from './routes/files/$sessionId/index'
 import { Route as TranscriptsProjectIdSessionIdRouteImport } from './routes/transcripts/$projectId/$sessionId'
+import { Route as PluginsMarketplacePluginNameRouteImport } from './routes/plugins.$marketplace.$pluginName'
 import { Route as FilesSessionIdFileHashRouteImport } from './routes/files/$sessionId/$fileHash'
 
 const SkillsRoute = SkillsRouteImport.update({
   id: '/skills',
   path: '/skills',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReportsRoute = ReportsRouteImport.update({
+  id: '/reports',
+  path: '/reports',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PluginsRoute = PluginsRouteImport.update({
+  id: '/plugins',
+  path: '/plugins',
   getParentRoute: () => rootRouteImport,
 } as any)
 const McpRoute = McpRouteImport.update({
@@ -86,6 +100,11 @@ const SettingsIndexRoute = SettingsIndexRouteImport.update({
   id: '/settings/',
   path: '/settings/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const PluginsIndexRoute = PluginsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => PluginsRoute,
 } as any)
 const PlansIndexRoute = PlansIndexRouteImport.update({
   id: '/plans/',
@@ -139,6 +158,12 @@ const TranscriptsProjectIdSessionIdRoute =
     path: '/transcripts/$projectId/$sessionId',
     getParentRoute: () => rootRouteImport,
   } as any)
+const PluginsMarketplacePluginNameRoute =
+  PluginsMarketplacePluginNameRouteImport.update({
+    id: '/$marketplace/$pluginName',
+    path: '/$marketplace/$pluginName',
+    getParentRoute: () => PluginsRoute,
+  } as any)
 const FilesSessionIdFileHashRoute = FilesSessionIdFileHashRouteImport.update({
   id: '/files/$sessionId/$fileHash',
   path: '/files/$sessionId/$fileHash',
@@ -153,6 +178,8 @@ export interface FileRoutesByFullPath {
   '/commands': typeof CommandsRoute
   '/history': typeof HistoryRoute
   '/mcp': typeof McpRoute
+  '/plugins': typeof PluginsRouteWithChildren
+  '/reports': typeof ReportsRoute
   '/skills': typeof SkillsRoute
   '/agents/$name': typeof AgentsNameRoute
   '/hooks/$id': typeof HooksIdRoute
@@ -161,10 +188,12 @@ export interface FileRoutesByFullPath {
   '/files': typeof FilesIndexRoute
   '/hooks': typeof HooksIndexRoute
   '/plans': typeof PlansIndexRoute
+  '/plugins/': typeof PluginsIndexRoute
   '/settings': typeof SettingsIndexRoute
   '/transcripts': typeof TranscriptsIndexRoute
   '/tricks-and-tips': typeof TricksAndTipsIndexRoute
   '/files/$sessionId/$fileHash': typeof FilesSessionIdFileHashRoute
+  '/plugins/$marketplace/$pluginName': typeof PluginsMarketplacePluginNameRoute
   '/transcripts/$projectId/$sessionId': typeof TranscriptsProjectIdSessionIdRoute
   '/files/$sessionId': typeof FilesSessionIdIndexRoute
   '/transcripts/$projectId': typeof TranscriptsProjectIdIndexRoute
@@ -177,6 +206,7 @@ export interface FileRoutesByTo {
   '/commands': typeof CommandsRoute
   '/history': typeof HistoryRoute
   '/mcp': typeof McpRoute
+  '/reports': typeof ReportsRoute
   '/skills': typeof SkillsRoute
   '/agents/$name': typeof AgentsNameRoute
   '/hooks/$id': typeof HooksIdRoute
@@ -185,10 +215,12 @@ export interface FileRoutesByTo {
   '/files': typeof FilesIndexRoute
   '/hooks': typeof HooksIndexRoute
   '/plans': typeof PlansIndexRoute
+  '/plugins': typeof PluginsIndexRoute
   '/settings': typeof SettingsIndexRoute
   '/transcripts': typeof TranscriptsIndexRoute
   '/tricks-and-tips': typeof TricksAndTipsIndexRoute
   '/files/$sessionId/$fileHash': typeof FilesSessionIdFileHashRoute
+  '/plugins/$marketplace/$pluginName': typeof PluginsMarketplacePluginNameRoute
   '/transcripts/$projectId/$sessionId': typeof TranscriptsProjectIdSessionIdRoute
   '/files/$sessionId': typeof FilesSessionIdIndexRoute
   '/transcripts/$projectId': typeof TranscriptsProjectIdIndexRoute
@@ -202,6 +234,8 @@ export interface FileRoutesById {
   '/commands': typeof CommandsRoute
   '/history': typeof HistoryRoute
   '/mcp': typeof McpRoute
+  '/plugins': typeof PluginsRouteWithChildren
+  '/reports': typeof ReportsRoute
   '/skills': typeof SkillsRoute
   '/agents/$name': typeof AgentsNameRoute
   '/hooks/$id': typeof HooksIdRoute
@@ -210,10 +244,12 @@ export interface FileRoutesById {
   '/files/': typeof FilesIndexRoute
   '/hooks/': typeof HooksIndexRoute
   '/plans/': typeof PlansIndexRoute
+  '/plugins/': typeof PluginsIndexRoute
   '/settings/': typeof SettingsIndexRoute
   '/transcripts/': typeof TranscriptsIndexRoute
   '/tricks-and-tips/': typeof TricksAndTipsIndexRoute
   '/files/$sessionId/$fileHash': typeof FilesSessionIdFileHashRoute
+  '/plugins/$marketplace/$pluginName': typeof PluginsMarketplacePluginNameRoute
   '/transcripts/$projectId/$sessionId': typeof TranscriptsProjectIdSessionIdRoute
   '/files/$sessionId/': typeof FilesSessionIdIndexRoute
   '/transcripts/$projectId/': typeof TranscriptsProjectIdIndexRoute
@@ -228,6 +264,8 @@ export interface FileRouteTypes {
     | '/commands'
     | '/history'
     | '/mcp'
+    | '/plugins'
+    | '/reports'
     | '/skills'
     | '/agents/$name'
     | '/hooks/$id'
@@ -236,10 +274,12 @@ export interface FileRouteTypes {
     | '/files'
     | '/hooks'
     | '/plans'
+    | '/plugins/'
     | '/settings'
     | '/transcripts'
     | '/tricks-and-tips'
     | '/files/$sessionId/$fileHash'
+    | '/plugins/$marketplace/$pluginName'
     | '/transcripts/$projectId/$sessionId'
     | '/files/$sessionId'
     | '/transcripts/$projectId'
@@ -252,6 +292,7 @@ export interface FileRouteTypes {
     | '/commands'
     | '/history'
     | '/mcp'
+    | '/reports'
     | '/skills'
     | '/agents/$name'
     | '/hooks/$id'
@@ -260,10 +301,12 @@ export interface FileRouteTypes {
     | '/files'
     | '/hooks'
     | '/plans'
+    | '/plugins'
     | '/settings'
     | '/transcripts'
     | '/tricks-and-tips'
     | '/files/$sessionId/$fileHash'
+    | '/plugins/$marketplace/$pluginName'
     | '/transcripts/$projectId/$sessionId'
     | '/files/$sessionId'
     | '/transcripts/$projectId'
@@ -276,6 +319,8 @@ export interface FileRouteTypes {
     | '/commands'
     | '/history'
     | '/mcp'
+    | '/plugins'
+    | '/reports'
     | '/skills'
     | '/agents/$name'
     | '/hooks/$id'
@@ -284,10 +329,12 @@ export interface FileRouteTypes {
     | '/files/'
     | '/hooks/'
     | '/plans/'
+    | '/plugins/'
     | '/settings/'
     | '/transcripts/'
     | '/tricks-and-tips/'
     | '/files/$sessionId/$fileHash'
+    | '/plugins/$marketplace/$pluginName'
     | '/transcripts/$projectId/$sessionId'
     | '/files/$sessionId/'
     | '/transcripts/$projectId/'
@@ -301,6 +348,8 @@ export interface RootRouteChildren {
   CommandsRoute: typeof CommandsRoute
   HistoryRoute: typeof HistoryRoute
   McpRoute: typeof McpRoute
+  PluginsRoute: typeof PluginsRouteWithChildren
+  ReportsRoute: typeof ReportsRoute
   SkillsRoute: typeof SkillsRoute
   HooksIdRoute: typeof HooksIdRoute
   PlansPlanIdRoute: typeof PlansPlanIdRoute
@@ -324,6 +373,20 @@ declare module '@tanstack/react-router' {
       path: '/skills'
       fullPath: '/skills'
       preLoaderRoute: typeof SkillsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reports': {
+      id: '/reports'
+      path: '/reports'
+      fullPath: '/reports'
+      preLoaderRoute: typeof ReportsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/plugins': {
+      id: '/plugins'
+      path: '/plugins'
+      fullPath: '/plugins'
+      preLoaderRoute: typeof PluginsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/mcp': {
@@ -396,6 +459,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/plugins/': {
+      id: '/plugins/'
+      path: '/'
+      fullPath: '/plugins/'
+      preLoaderRoute: typeof PluginsIndexRouteImport
+      parentRoute: typeof PluginsRoute
+    }
     '/plans/': {
       id: '/plans/'
       path: '/plans'
@@ -466,6 +536,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TranscriptsProjectIdSessionIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/plugins/$marketplace/$pluginName': {
+      id: '/plugins/$marketplace/$pluginName'
+      path: '/$marketplace/$pluginName'
+      fullPath: '/plugins/$marketplace/$pluginName'
+      preLoaderRoute: typeof PluginsMarketplacePluginNameRouteImport
+      parentRoute: typeof PluginsRoute
+    }
     '/files/$sessionId/$fileHash': {
       id: '/files/$sessionId/$fileHash'
       path: '/files/$sessionId/$fileHash'
@@ -487,6 +564,19 @@ const AgentsRouteChildren: AgentsRouteChildren = {
 const AgentsRouteWithChildren =
   AgentsRoute._addFileChildren(AgentsRouteChildren)
 
+interface PluginsRouteChildren {
+  PluginsIndexRoute: typeof PluginsIndexRoute
+  PluginsMarketplacePluginNameRoute: typeof PluginsMarketplacePluginNameRoute
+}
+
+const PluginsRouteChildren: PluginsRouteChildren = {
+  PluginsIndexRoute: PluginsIndexRoute,
+  PluginsMarketplacePluginNameRoute: PluginsMarketplacePluginNameRoute,
+}
+
+const PluginsRouteWithChildren =
+  PluginsRoute._addFileChildren(PluginsRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AgentsRoute: AgentsRouteWithChildren,
@@ -495,6 +585,8 @@ const rootRouteChildren: RootRouteChildren = {
   CommandsRoute: CommandsRoute,
   HistoryRoute: HistoryRoute,
   McpRoute: McpRoute,
+  PluginsRoute: PluginsRouteWithChildren,
+  ReportsRoute: ReportsRoute,
   SkillsRoute: SkillsRoute,
   HooksIdRoute: HooksIdRoute,
   PlansPlanIdRoute: PlansPlanIdRoute,

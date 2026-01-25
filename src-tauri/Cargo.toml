@@ -28,3 +28,5 @@ chrono = { version = "0.4", features = ["serde"] }
 dirs = "5.0"
 uuid = { version = "1.0", features = ["v4", "serde"] }
 reqwest = { version = "0.12", features = ["json"] }
+tauri-plugin-dialog = "2"
+whoami = "1.5"

@@ -2,12 +2,14 @@ mod commands;
 
 use commands::{
     fs_utils::*, analytics::*, history::*, transcripts::*, plans::*, files::*, mcp::*,
-    skills::*, ai_chat::*, settings::*, library::*, agents::*, commands::*,
+    skills::*, ai_chat::*, settings::*, library::*, agents::*, commands::*, plugins::*, reports::*,
+    auth::*,
 };
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
   tauri::Builder::default()
+    .plugin(tauri_plugin_dialog::init())
     .setup(|app| {
       if cfg!(debug_assertions) {
         app.handle().plugin(
@@ -101,6 +103,15 @@ pub fn run() {
       update_agent,
       // Commands
       get_commands_data,
+      // Plugins commands
+      get_plugins_data,
+      get_plugin_details,
+      // Reports commands
+      generate_report,
+      save_report,
+      // Auth commands
+      get_auth_status,
+      trigger_claude_login,
     ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");

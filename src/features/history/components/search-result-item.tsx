@@ -47,7 +47,7 @@ export function SearchResultItem({ result, query }: SearchResultItemProps) {
       <Card className="transition-all hover:bg-muted/50 hover:border-primary/30">
         <CardContent className="p-4">
           {/* Prompt text */}
-          <p className="text-sm leading-relaxed line-clamp-2 mb-3">
+          <p className="text-sm leading-relaxed line-clamp-2 mb-3 text-chart-1">
             {highlightText(entry.display, query)}
           </p>
 

@@ -10,12 +10,13 @@ import {
   Globe,
   ChevronDown,
   ChevronRight,
-  Wrench,
   Bot,
   HelpCircle,
-  Activity,
-  CheckCircle2,
   Loader2,
+  Plug,
+  Coins,
+  Clock,
+  Database,
 } from 'lucide-react'
 import {
   Sheet,
@@ -33,7 +34,7 @@ import { getAgentTranscript } from '@/shared/services/transcripts/client'
 import { AgentLaunchBlock } from './agent-launch-block'
 import { MessageBlock } from '../message-block'
 import { ScrollArea } from '@/shared/components/ui/scroll-area'
-import type { AgentProgressData, Message } from '@/shared/types/transcripts'
+import type { AgentProgressData, Message, TokenUsage } from '@/shared/types/transcripts'
 
 interface ToolUseBlockRendererProps {
   name: string
@@ -42,6 +43,8 @@ interface ToolUseBlockRendererProps {
   projectId?: string
   sessionId?: string
   agentId?: string
+  usage?: TokenUsage
+  timestamp?: string
 }
 
 const TOOL_ICONS: Record<string, React.ElementType> = {
@@ -56,6 +59,7 @@ const TOOL_ICONS: Record<string, React.ElementType> = {
   WebSearch: Globe,
   Task: Bot,
   AskUserQuestion: HelpCircle,
+  Command: Terminal,
 }
 
 const TOOL_COLORS: Record<string, string> = {
@@ -70,6 +74,7 @@ const TOOL_COLORS: Record<string, string> = {
   WebSearch: 'bg-indigo-500/10 border-indigo-500/30 text-indigo-900 dark:text-indigo-300',
   Task: 'bg-violet-500/10 border-violet-500/30 text-violet-900 dark:text-violet-300',
   AskUserQuestion: 'bg-amber-500/10 border-amber-500/30 text-amber-300 dark:text-amber-300',
+  Command: 'bg-slate-500/10 border-slate-500/30 text-slate-900 dark:text-slate-300',
 }
 
 // Sub-agent type descriptions
@@ -92,7 +97,7 @@ function getDisplayType(type: string) {
   return type
 }
 
-export function ToolUseBlockRenderer({ name, input, progress, projectId, sessionId, agentId }: ToolUseBlockRendererProps) {
+export function ToolUseBlockRenderer({ name, input, progress, projectId, sessionId, agentId, usage, timestamp }: ToolUseBlockRendererProps) {
   if (name === 'Task') {
     return (
       <AgentLaunchBlock
@@ -104,8 +109,8 @@ export function ToolUseBlockRenderer({ name, input, progress, projectId, session
     )
   }
 
-  const Icon = TOOL_ICONS[name] || Wrench
-  const colorClass = TOOL_COLORS[name] || 'bg-muted border-border'
+  const Icon = TOOL_ICONS[name] || Plug
+  const colorClass = TOOL_COLORS[name] || 'bg-cyan-500/10 border-cyan-500/30 text-cyan-900 dark:text-cyan-300'
 
   // Server-side fallback (non-interactive)
   const fallback = (
@@ -121,19 +126,38 @@ export function ToolUseBlockRenderer({ name, input, progress, projectId, session
 
   return (
     <ClientOnly fallback={fallback}>
-      <ToolUseCollapsible name={name} input={input} progress={progress} projectId={projectId} sessionId={sessionId} agentId={agentId} />
+      <ToolUseCollapsible
+        name={name}
+        input={input}
+        progress={progress}
+        projectId={projectId}
+        sessionId={sessionId}
+        agentId={agentId}
+        usage={usage}
+        timestamp={timestamp}
+      />
     </ClientOnly>
   )
 }
 
-function ToolUseCollapsible({ name, input, progress, projectId, sessionId, agentId: propsAgentId }: ToolUseBlockRendererProps) {
+function ToolUseCollapsible({
+  name,
+  input,
+  progress,
+  projectId,
+  sessionId,
+  agentId: propsAgentId,
+  usage,
+  timestamp
+}: ToolUseBlockRendererProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [agentTranscript, setAgentTranscript] = useState<Message[]>([])
   const [isLoadingTranscript, setIsLoadingTranscript] = useState(false)
   const [isSheetOpen, setIsSheetOpen] = useState(false)
 
-  const Icon = TOOL_ICONS[name] || Wrench
-  const colorClass = TOOL_COLORS[name] || 'bg-muted border-border'
+  const Icon = TOOL_ICONS[name] || Plug
+  const colorClass = TOOL_COLORS[name] || 'bg-cyan-500/10 border-cyan-500/30 text-cyan-900 dark:text-cyan-300'
+  const isMCP = !TOOL_ICONS[name] // Identify if this is likely an MCP/External tool
 
   // Determine agentId (from props, progress, or input)
   const effectiveAgentId = propsAgentId || progress?.find(p => p.agentId)?.agentId || (input as any).agentId
@@ -166,6 +190,14 @@ function ToolUseCollapsible({ name, input, progress, projectId, sessionId, agent
             </Button>
 
             <div className="flex items-center gap-2 px-3 shrink-0">
+              {/* Optional: Show mini-badge for MCP tools even when collapsed */}
+              {isMCP && usage && (
+                <Badge variant="outline" className="h-5 px-1.5 text-[9px] gap-1 bg-background/50">
+                  <Coins className="h-2.5 w-2.5" />
+                  ${usage.costUsd.toFixed(2)}
+                </Badge>
+              )}
+
               {name === 'Task' && effectiveAgentId && (
                 <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
                   <SheetTrigger asChild>
@@ -224,6 +256,52 @@ function ToolUseCollapsible({ name, input, progress, projectId, sessionId, agent
 
         <CollapsibleContent>
           <div className="px-3 pb-3 space-y-3">
+            {/* Extended Info Section for MCP/Unknown Tools (or any tool with rich usage) */}
+            {isMCP && (
+              <div className="mt-1 mb-2 p-2 rounded bg-black/5 text-xs text-muted-foreground grid grid-cols-2 gap-2">
+                <div className="col-span-2 font-medium flex items-center gap-1.5 text-foreground/80 border-b border-black/5 pb-1 mb-1">
+                  <Database className="h-3 w-3" />
+                  Tool Context & Usage
+                </div>
+
+                {usage ? (
+                  <>
+                    <div className="flex justify-between">
+                      <span>Total Tokens:</span>
+                      <span className="font-mono">{usage.totalTokens.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Input / Output:</span>
+                      <span className="font-mono">{usage.inputTokens.toLocaleString()} / {usage.outputTokens.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Cache Read:</span>
+                      <span className="font-mono">{usage.cacheReadTokens.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between text-cyan-700 dark:text-cyan-400 font-medium">
+                      <span>Message Cost:</span>
+                      <span className="font-mono flex items-center gap-1">
+                        <Coins className="h-3 w-3" /> ${usage.costUsd.toFixed(4)}
+                      </span>
+                    </div>
+                  </>
+                ) : (
+                  <div className="col-span-2 text-center italic opacity-70">
+                    Usage details not available
+                  </div>
+                )}
+
+                {timestamp && (
+                  <div className="col-span-2 flex justify-between border-t border-black/5 pt-1 mt-1">
+                    <span>Executed at:</span>
+                    <span className="font-mono flex items-center gap-1">
+                      <Clock className="h-3 w-3" /> {new Date(timestamp).toLocaleTimeString()}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
+
             {renderToolInput(name, input)}
           </div>
         </CollapsibleContent>
@@ -266,7 +344,23 @@ function renderToolSummary(name: string, input: Record<string, any>): React.Reac
           {String((input.questions as Array<{ question: string }>)?.[0]?.question || '').slice(0, 40)}...
         </span>
       )
+    case 'Command':
+      return (
+        <code className="text-[10px] bg-black/10 px-1.5 py-0.5 rounded truncate max-w-[300px]">
+          {String(input.command || '')}
+        </code>
+      )
     default:
+      // For general MCP tools, try to show the first interesting textual param
+      const keys = Object.keys(input).filter(k => typeof input[k] === 'string' && k !== 'type')
+      const firstParam = keys.length > 0 ? input[keys[0]] : null
+      if (firstParam) {
+        return (
+          <code className="text-[10px] bg-black/10 px-1.5 py-0.5 rounded truncate max-w-[300px]">
+            {String(firstParam).slice(0, 40)}...
+          </code>
+        )
+      }
       return null
   }
 }
@@ -398,6 +492,22 @@ function renderToolInput(name: string, input: Record<string, any>): React.ReactN
               )}
             </div>
           ))}
+        </div>
+      )
+
+    case 'Command':
+      return (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className="font-mono text-xs">
+              {String(input.command)}
+            </Badge>
+          </div>
+          {input.message && (
+            <div className="text-xs text-muted-foreground bg-black/5 p-2 rounded">
+              {String(input.message)}
+            </div>
+          )}
         </div>
       )
 

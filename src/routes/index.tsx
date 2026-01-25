@@ -20,7 +20,7 @@ const quickLinks = [
     icon: Search,
   },
   {
-    title: 'Claude Code Tools',
+    title: 'Tools',
     description: 'Reference guide for all internal tools',
     href: '/claude-code',
     icon: Wrench,

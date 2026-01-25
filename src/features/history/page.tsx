@@ -13,7 +13,7 @@ import {
   PageHeader,
   PageHeaderContent,
   PageTitle,
-  PageDescription,
+  PageDescription, PageHeaderSeparator,
 } from '@/shared/components/page/page-header'
 
 export function Page() {
@@ -68,12 +68,11 @@ export function Page() {
     <>
       <PageHeader>
         <PageHeaderContent>
-          <div>
-            <PageTitle>Prompt History</PageTitle>
-            <PageDescription>
-              Search all prompts across your Claude Code sessions
-            </PageDescription>
-          </div>
+          <PageTitle>Prompt History</PageTitle>
+          <PageHeaderSeparator />
+          <PageDescription>
+            Search all prompts across your Claude Code sessions
+          </PageDescription>
         </PageHeaderContent>
       </PageHeader>
       <div className="flex flex-col gap-6 p-6">

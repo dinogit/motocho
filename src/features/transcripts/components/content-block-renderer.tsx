@@ -1,4 +1,4 @@
-import type { ContentBlock } from '@/shared/types/transcripts'
+import type { ContentBlock, TokenUsage } from '@/shared/types/transcripts'
 import { TextBlockRenderer } from './blocks/text-block'
 import { ToolUseBlockRenderer } from './blocks/tool-use-block'
 import { ToolResultBlockRenderer } from './blocks/tool-result-block'
@@ -9,9 +9,11 @@ interface ContentBlockRendererProps {
   block: ContentBlock
   projectId?: string
   sessionId?: string
+  usage?: TokenUsage
+  timestamp?: string
 }
 
-export function ContentBlockRenderer({ block, projectId, sessionId }: ContentBlockRendererProps) {
+export function ContentBlockRenderer({ block, projectId, sessionId, usage, timestamp }: ContentBlockRendererProps) {
   switch (block.type) {
     case 'text':
       return <TextBlockRenderer text={block.text || ''} />
@@ -25,6 +27,8 @@ export function ContentBlockRenderer({ block, projectId, sessionId }: ContentBlo
           projectId={projectId}
           sessionId={sessionId}
           agentId={(block as any).agentId}
+          usage={usage}
+          timestamp={timestamp}
         />
       )
 

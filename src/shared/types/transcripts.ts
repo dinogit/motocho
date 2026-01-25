@@ -17,17 +17,7 @@ export interface Session {
   cost?: number
   linesWritten?: number
   processingTime?: number
-  stats?: {
-    promptCount: number
-    messageCount: number
-    toolCallCount: number
-    totalPages: number
-    totalCostUsd: number
-    durationMs?: number
-    startTimestamp?: string
-    endTimestamp?: string
-    gitBranch?: string
-  }
+  stats?: SessionStats
 }
 
 export interface SessionDetails {
@@ -194,4 +184,15 @@ export interface SessionStats {
   startTimestamp?: string
   endTimestamp?: string
   gitBranch?: string
+  health?: SessionHealth
+  toolBreakdown?: Record<string, number>
+}
+
+export interface SessionHealth {
+  promptsPerHour: number
+  toolCallsPerPrompt: number
+  assistantMessagesPerPrompt: number
+  tokensPerMinute: number
+  status: 'healthy' | 'stalled' | 'frantic' | 'expensive' | 'looping' | 'exploding'
+  verdict: 'continue' | 'constrain' | 'restart'
 }

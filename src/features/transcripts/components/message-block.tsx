@@ -8,7 +8,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/shar
 import { ContentBlockRenderer } from './content-block-renderer'
 
 import type { Message } from '@/shared/types/transcripts'
-import {HookBlock} from "@/features/transcripts/components/blocks/hook-block.tsx";
+import { HookBlock } from "@/features/transcripts/components/blocks/hook-block.tsx";
 
 interface MessageBlockProps {
   message: Message
@@ -57,10 +57,10 @@ export function MessageBlock({ message, onAsk, projectId, sessionId }: MessageBl
         {/*</div>*/}
         <div className="flex-1">
           <HookBlock
-              hookEvent={hookBlock?.hookEvent}
-              hookName={hookBlock?.hookName}
-              command={hookBlock?.command}
-              timestamp={message.timestamp}
+            hookEvent={hookBlock?.hookEvent}
+            hookName={hookBlock?.hookName}
+            command={hookBlock?.command}
+            timestamp={message.timestamp}
           />
         </div>
       </div>
@@ -199,7 +199,14 @@ export function MessageBlock({ message, onAsk, projectId, sessionId }: MessageBl
 
           <div className="space-y-3">
             {message.content.map((block, index) => (
-              <ContentBlockRenderer key={index} block={block} projectId={projectId} sessionId={sessionId} />
+              <ContentBlockRenderer
+                key={index}
+                block={block}
+                projectId={projectId}
+                sessionId={sessionId}
+                usage={message.usage}
+                timestamp={message.timestamp}
+              />
             ))}
           </div>
         </CardContent>
