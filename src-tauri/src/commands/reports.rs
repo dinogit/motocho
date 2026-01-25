@@ -485,24 +485,27 @@ fn group_work_items(items: Vec<WorkItem>) -> Vec<WorkGroup> {
 // Markdown Generation
 // ============================================================================
 
-fn generate_markdown(title: &str, date_range: &str, groups: &[WorkGroup]) -> String {
+fn generate_markdown(title: &str, date_range: &str, groups: &[WorkGroup], summary: &str) -> String {
     let now = Utc::now().format("%Y-%m-%d %H:%M UTC").to_string();
 
     let mut md = format!(
         r#"# {}
 
 **Period:** {}
-**Work items:** {}
 
 ---
+
+## Summary
+
+{}
 
 "#,
         title,
         date_range,
-        groups.len()
+        summary
     );
 
-    // Group by work type for cleaner output
+    // Group by work type for detailed breakdown
     let mut by_type: HashMap<&str, Vec<&WorkGroup>> = HashMap::new();
     for group in groups {
         by_type
@@ -511,9 +514,10 @@ fn generate_markdown(title: &str, date_range: &str, groups: &[WorkGroup]) -> Str
             .push(group);
     }
 
-    // File changes
+    // File changes (detailed)
     if let Some(file_items) = by_type.get("Files") {
         md.push_str("## Files Changed\n\n");
+        md.push_str("<details>\n<summary>Show all files</summary>\n\n");
         for item in file_items {
             let action = if item.work_type == "file_created" {
                 "Created"
@@ -527,7 +531,7 @@ fn generate_markdown(title: &str, date_range: &str, groups: &[WorkGroup]) -> Str
             };
             md.push_str(&format!("- {} `{}`{}\n", action, item.subject, edit_note));
         }
-        md.push('\n');
+        md.push_str("\n</details>\n\n");
     }
 
     // Git operations
@@ -586,6 +590,139 @@ fn type_to_category(work_type: &str) -> &'static str {
 }
 
 // ============================================================================
+// Local Summary Generation (No AI Required)
+// ============================================================================
+
+/// Generate human-readable work summary from work groups without AI.
+/// Groups files by directory/feature and produces semantic descriptions.
+fn generate_work_summary(groups: &[WorkGroup]) -> String {
+    let mut bullets: Vec<String> = Vec::new();
+
+    // Group files by parent directory for feature detection
+    let mut by_directory: HashMap<String, Vec<&WorkGroup>> = HashMap::new();
+    let mut commands: Vec<&WorkGroup> = Vec::new();
+    let mut features: Vec<&WorkGroup> = Vec::new();
+
+    for group in groups {
+        match group.work_type.as_str() {
+            "file_created" | "file_modified" => {
+                // Extract parent directory as feature hint
+                let dir = group.subject
+                    .rsplit('/')
+                    .nth(1)
+                    .unwrap_or("root")
+                    .to_string();
+                by_directory.entry(dir).or_default().push(group);
+            }
+            "git_commit" | "git_push" | "git_branch" | "git_merge" => {
+                commands.push(group);
+            }
+            "dependency_added" => {
+                features.push(group);
+            }
+            _ => {}
+        }
+    }
+
+    // Convert directory groups into feature bullets
+    for (dir, files) in by_directory.iter() {
+        let total_edits: usize = files.iter().map(|f| f.count).sum();
+        let file_count = files.len();
+
+        // Determine action based on file types
+        let has_created = files.iter().any(|f| f.work_type == "file_created");
+        let action = if has_created && file_count > 1 {
+            "Implemented"
+        } else if total_edits > 5 {
+            "Refactored"
+        } else {
+            "Updated"
+        };
+
+        // Convert directory name to feature name
+        let feature_name = humanize_directory(dir);
+
+        if file_count == 1 {
+            let file = files[0];
+            let filename = file.subject.rsplit('/').next().unwrap_or(&file.subject);
+            bullets.push(format!("{} {}", action, humanize_filename(filename)));
+        } else {
+            bullets.push(format!("{} {} ({} files)", action, feature_name, file_count));
+        }
+    }
+
+    // Add git operations
+    for cmd in commands {
+        match cmd.work_type.as_str() {
+            "git_commit" => {
+                if cmd.subject != "committed changes" {
+                    bullets.push(format!("Committed: {}", cmd.subject));
+                }
+            }
+            "git_push" => bullets.push("Pushed changes to remote".to_string()),
+            "git_branch" => bullets.push(format!("Created branch {}", cmd.subject)),
+            _ => {}
+        }
+    }
+
+    // Add dependencies
+    for feat in features {
+        bullets.push(format!("Added dependency {}", feat.subject));
+    }
+
+    // Limit to top 15 bullets
+    bullets.truncate(15);
+
+    if bullets.is_empty() {
+        return "No significant work items found in this period.".to_string();
+    }
+
+    let mut result = String::from("Work completed in this period:\n");
+    for bullet in bullets {
+        result.push_str(&format!("- {}\n", bullet));
+    }
+
+    result
+}
+
+/// Convert directory name to human-readable feature name
+fn humanize_directory(dir: &str) -> String {
+    // Common patterns
+    let dir = dir.trim_start_matches('_');
+
+    // Handle _components pattern
+    if dir == "components" || dir.ends_with("-components") {
+        return "components".to_string();
+    }
+
+    // Convert kebab-case to Title Case
+    dir.split('-')
+        .map(|word| {
+            let mut chars: Vec<char> = word.chars().collect();
+            if let Some(first) = chars.first_mut() {
+                *first = first.to_ascii_uppercase();
+            }
+            chars.into_iter().collect::<String>()
+        })
+        .collect::<Vec<_>>()
+        .join(" ")
+        .to_lowercase()
+}
+
+/// Convert filename to human-readable description
+fn humanize_filename(filename: &str) -> String {
+    let name = filename
+        .trim_end_matches(".tsx")
+        .trim_end_matches(".ts")
+        .trim_end_matches(".rs")
+        .trim_end_matches(".json")
+        .trim_end_matches(".md");
+
+    // Convert kebab-case or snake_case to readable
+    name.replace('-', " ").replace('_', " ")
+}
+
+// ============================================================================
 // AI Formatting (Optional)
 // ============================================================================
 
@@ -616,29 +753,32 @@ fn get_oauth_token() -> Option<String> {
         .map(|s| s.to_string())
 }
 
-/// Use AI to convert work groups into clean bullet points.
+/// Use AI (Sonnet) to convert work groups into clean bullet points.
 /// AI only clusters and formats - it must not infer work not present in input.
-async fn ai_format_work_items(groups: &[WorkGroup], project_name: &str) -> Option<String> {
+async fn ai_format_work_items(groups: &[WorkGroup], _project_name: &str) -> Option<String> {
     let token = get_oauth_token()?;
 
-    // Build structured input (not transcripts)
+    // Build structured work item list
     let mut input_lines = Vec::new();
     for group in groups.iter().take(50) {
-        // Limit input size
-        let line = format!(
-            "- {} {} ({}x)",
-            match group.work_type.as_str() {
-                "file_created" => "Created",
-                "file_modified" => "Modified",
-                "git_commit" => "Committed:",
-                "git_push" => "Pushed",
-                "dependency_added" => "Added dependency",
-                _ => &group.work_type,
-            },
-            group.subject,
-            group.count
-        );
-        input_lines.push(line);
+        let work_type = match group.work_type.as_str() {
+            "file_created" | "file_modified" => "file_change",
+            "git_commit" | "git_push" | "git_branch" | "git_merge" => "command",
+            "dependency_added" => "feature",
+            t if t.starts_with("npm_") || t.starts_with("cargo_") => "command",
+            _ => "file_change",
+        };
+
+        let edits = if group.count > 1 {
+            format!(", edits: {}", group.count)
+        } else {
+            String::new()
+        };
+
+        input_lines.push(format!(
+            "- type: {}, subject: {}{}",
+            work_type, group.subject, edits
+        ));
     }
 
     let input = input_lines.join("\n");
@@ -651,25 +791,27 @@ async fn ai_format_work_items(groups: &[WorkGroup], project_name: &str) -> Optio
         .header("anthropic-version", "2023-06-01")
         .header("content-type", "application/json")
         .json(&json!({
-            "model": "claude-3-5-haiku-latest",
+            "model": "claude-3-5-sonnet-latest",
             "max_tokens": 500,
             "messages": [{
                 "role": "user",
                 "content": format!(
-                    r#"Convert these work items into a concise bullet list for project "{}".
+r#"You are given a structured list of project Work Items. Each item has:
+- type: file_change | feature | refactor | command | decision
+- subject: file path, feature name, or concept
+- edits: number of edits (optional)
 
-Rules:
-- Group related file changes into logical features
-- Use action verbs (Implemented, Fixed, Added, Refactored)
-- Do NOT infer work not listed
-- Do NOT add speculative language
-- Maximum 10 bullets
+Your task:
+1. Produce a concise human-readable bullet list summarizing the work completed in this period.
+2. Merge multiple edits to the same file or feature into a single bullet.
+3. Convert technical actions into plain actionable statements (e.g., Modified src/commands/reports.rs → "Refactored report commands").
+4. Keep every bullet strictly supported by the given Work Items. Do not invent or hallucinate work.
+5. Start the list with: Work completed in this period:
+6. Output only the bullet list, ready to display in a report.
+7. Do not summarize full transcripts—use only the Work Items provided.
 
-Work items:
-{}
-
-Bullet list:"#,
-                    project_name,
+Work Items:
+{}"#,
                     input
                 )
             }]
@@ -812,22 +954,20 @@ pub async fn generate_report(
 
     let date_range = format!("{} to {}", start_date, end_date);
 
-    // Generate markdown (optionally with AI formatting)
-    let markdown = if use_ai_formatting {
-        if let Some(ai_bullets) = ai_format_work_items(&work_groups, &title).await {
-            format!(
-                "# {}\n\n**Period:** {}\n\n---\n\n## Work Completed\n\n{}\n\n---\n*Generated: {}*\n",
-                title,
-                date_range,
-                ai_bullets,
-                Utc::now().format("%Y-%m-%d %H:%M UTC")
-            )
-        } else {
-            generate_markdown(&title, &date_range, &work_groups)
-        }
+    // Always generate local summary first
+    let local_summary = generate_work_summary(&work_groups);
+
+    // Try AI enhancement if requested, fall back to local summary
+    let summary = if use_ai_formatting {
+        ai_format_work_items(&work_groups, &title)
+            .await
+            .unwrap_or(local_summary)
     } else {
-        generate_markdown(&title, &date_range, &work_groups)
+        local_summary
     };
+
+    // Generate full markdown with summary
+    let markdown = generate_markdown(&title, &date_range, &work_groups, &summary);
 
     Ok(ReportData {
         project_name: title,
