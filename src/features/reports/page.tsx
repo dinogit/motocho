@@ -26,23 +26,23 @@ import { DateRangePicker } from './components/date-range-picker'
 import { ReportPreview } from './components/report-preview'
 import type { Project } from '@/shared/types/transcripts'
 
+interface WorkGroup {
+  subject: string
+  workType: string
+  count: number
+  firstTimestamp: number
+  lastTimestamp: number
+  sessions: string[]
+}
+
 interface ReportData {
   projectName: string
   dateRange: string
-  sessions: SessionSummary[]
+  workItems: WorkGroup[]
   markdown: string
+  totalFiles: number
+  totalCommands: number
   totalSessions: number
-  totalFilesChanged: number
-  totalToolCalls: number
-}
-
-interface SessionSummary {
-  id: string
-  projectName: string
-  timestamp: string
-  prompt: string
-  filesChanged: { path: string; action: string }[]
-  toolsUsed: Record<string, number>
 }
 
 export function Page() {
@@ -198,11 +198,11 @@ export function Page() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
-                <CardTitle className="text-lg">What Was Done</CardTitle>
+                <CardTitle className="text-lg">Work Completed</CardTitle>
                 <p className="text-sm text-muted-foreground mt-1">
-                  <span className="font-medium">{report.totalSessions}</span> sessions,{' '}
-                  <span className="font-medium">{report.totalFilesChanged}</span> files changed,{' '}
-                  <span className="font-medium">{report.totalToolCalls}</span> tool calls
+                  <span className="font-medium">{report.workItems.length}</span> work items,{' '}
+                  <span className="font-medium">{report.totalFiles}</span> files,{' '}
+                  <span className="font-medium">{report.totalSessions}</span> sessions
                 </p>
               </div>
               <div className="flex gap-2">
