@@ -1,22 +1,36 @@
 /**
  * Chat Drawer Component
  *
- * A slide-out drawer for chatting with Claude about specific
- * parts of a transcript. Uses TanStack AI for streaming responses.
+ * A slide-out sheet for chatting with Claude about specific
+ * parts of a transcript. Uses Claude Code CLI via Tauri.
  */
 
 import { useState, useRef, useEffect } from 'react'
-import { useChat, fetchServerSentEvents } from '@tanstack/ai-react'
-import { X, Send, Loader2, MessageSquare, Sparkles } from 'lucide-react'
+import { invoke } from '@tauri-apps/api/core'
+import { Send, Loader2, MessageSquare, Sparkles } from 'lucide-react'
 import { Button } from '@/shared/components/ui/button'
 import { Input } from '@/shared/components/ui/input'
 import { Badge } from '@/shared/components/ui/badge'
 import { ScrollArea } from '@/shared/components/ui/scroll-area'
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+  SheetFooter,
+} from '@/shared/components/ui/sheet'
 import { cn } from '@/shared/lib/utils'
 
 export interface ChatContext {
   type: 'tool_use' | 'tool_result' | 'text'
   toolName?: string
+  content: string
+}
+
+interface ChatMessage {
+  id: string
+  role: 'user' | 'assistant'
   content: string
 }
 
@@ -32,22 +46,13 @@ export function ChatDrawer({
   isOpen,
   onClose,
   context,
-  projectId,
-  sessionId,
 }: ChatDrawerProps) {
   const [input, setInput] = useState('')
+  const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
-
-  const { messages, sendMessage, isLoading, clear } = useChat({
-    connection: fetchServerSentEvents('/api/chat', () => ({
-      body: {
-        context,
-        projectId,
-        sessionId,
-      },
-    })),
-  })
 
   // Focus input when drawer opens
   useEffect(() => {
@@ -63,8 +68,46 @@ export function ChatDrawer({
 
   // Clear messages when context changes
   useEffect(() => {
-    clear()
-  }, [context, clear])
+    setMessages([])
+    setError(null)
+  }, [context])
+
+  const sendMessage = async (question: string) => {
+    if (!context) return
+
+    const userMessage: ChatMessage = {
+      id: crypto.randomUUID(),
+      role: 'user',
+      content: question,
+    }
+    setMessages(prev => [...prev, userMessage])
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      const history = messages.map(m => ({
+        role: m.role,
+        content: m.content,
+      }))
+
+      const response = await invoke<string>('ask_claude_cli', {
+        context: context.content,
+        question,
+        history,
+      })
+
+      const assistantMessage: ChatMessage = {
+        id: crypto.randomUUID(),
+        role: 'assistant',
+        content: response,
+      }
+      setMessages(prev => [...prev, assistantMessage])
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -74,49 +117,39 @@ export function ChatDrawer({
     }
   }
 
-  const handleClose = () => {
-    clear()
-    onClose()
+  const handleOpenChange = (open: boolean) => {
+    if (!open) {
+      setMessages([])
+      setError(null)
+      onClose()
+    }
   }
 
-  if (!isOpen || !context) return null
-
   return (
-    <>
-      {/* Backdrop */}
-      <div
-        className="fixed inset-0 bg-black/20 z-40"
-        onClick={handleClose}
-      />
-
-      {/* Drawer */}
-      <div className="fixed right-0 top-0 bottom-0 w-full max-w-md bg-background border-l shadow-xl z-50 flex flex-col">
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b">
-          <div className="flex items-center gap-2">
+    <Sheet open={isOpen && !!context} onOpenChange={handleOpenChange}>
+      <SheetContent side="right" className="w-full sm:max-w-md flex flex-col p-0">
+        <SheetHeader className="p-4 border-b">
+          <SheetTitle className="flex items-center gap-2">
             <MessageSquare className="h-5 w-5 text-primary" />
-            <span className="font-medium">Ask about this</span>
-          </div>
-          <Button variant="ghost" size="icon" onClick={handleClose}>
-            <X className="h-4 w-4" />
-          </Button>
-        </div>
-
-        {/* Context preview */}
-        <div className="p-3 border-b bg-muted/30">
-          <div className="flex items-center gap-2 mb-2">
-            <Badge variant="outline" className="text-xs">
-              {context.type === 'tool_use' ? context.toolName : context.type}
-            </Badge>
-          </div>
-          <pre className="text-xs font-mono text-muted-foreground line-clamp-3 whitespace-pre-wrap">
-            {context.content.slice(0, 200)}
-            {context.content.length > 200 && '...'}
-          </pre>
-        </div>
+            Ask about this
+          </SheetTitle>
+          {context && (
+            <SheetDescription asChild>
+              <div className="space-y-2">
+                <Badge variant="outline" className="text-xs">
+                  {context.type === 'tool_use' ? context.toolName : context.type}
+                </Badge>
+                <pre className="text-xs font-mono text-muted-foreground line-clamp-3 whitespace-pre-wrap">
+                  {context.content.slice(0, 200)}
+                  {context.content.length > 200 && '...'}
+                </pre>
+              </div>
+            </SheetDescription>
+          )}
+        </SheetHeader>
 
         {/* Messages */}
-        <ScrollArea className="flex-1 p-4">
+        <ScrollArea className="h-full w-auto p-4">
           {messages.length === 0 ? (
             <div className="text-center text-muted-foreground py-8">
               <Sparkles className="h-8 w-8 mx-auto mb-3 opacity-50" />
@@ -133,12 +166,6 @@ export function ChatDrawer({
                   disabled={isLoading}
                 >
                   Why this approach?
-                </SuggestionButton>
-                <SuggestionButton
-                  onClick={() => sendMessage('Save this to my library')}
-                  disabled={isLoading}
-                >
-                  Save to library
                 </SuggestionButton>
               </div>
             </div>
@@ -160,51 +187,24 @@ export function ChatDrawer({
                         : 'bg-muted'
                     )}
                   >
-                    {message.parts?.map((part, i) => {
-                      if (part.type === 'text') {
-                        // TanStack AI text parts have 'value' not 'text'
-                        const textValue = 'text' in part ? String(part.text) :
-                                         'value' in part ? String(part.value) : ''
-                        return (
-                          <div key={i} className="whitespace-pre-wrap">
-                            {textValue}
-                          </div>
-                        )
-                      }
-                      if (part.type === 'tool-call') {
-                        // Handle tool call part with type guard
-                        const toolName = 'toolName' in part ? String(part.toolName) :
-                                        'name' in part ? String(part.name) : 'tool'
-                        return (
-                          <div key={i} className="my-2 p-2 bg-background/50 rounded text-xs">
-                            <Badge variant="secondary" className="mb-1">
-                              {toolName}
-                            </Badge>
-                          </div>
-                        )
-                      }
-                      if (part.type === 'tool-result') {
-                        // Handle tool result part with type guard
-                        const resultValue = 'result' in part ? part.result :
-                                           'value' in part ? part.value : null
-                        return (
-                          <div key={i} className="my-2 p-2 bg-background/50 rounded text-xs">
-                            <div className="text-green-600">
-                              ✓ {JSON.stringify(resultValue)}
-                            </div>
-                          </div>
-                        )
-                      }
-                      return null
-                    }) || <div className="whitespace-pre-wrap">{String((message as { content?: string }).content || '')}</div>}
+                    <div className="whitespace-pre-wrap">{message.content}</div>
                   </div>
                 </div>
               ))}
 
               {isLoading && (
                 <div className="flex justify-start">
-                  <div className="bg-muted rounded-lg px-3 py-2">
+                  <div className="bg-muted rounded-lg px-3 py-2 flex items-center gap-2">
                     <Loader2 className="h-4 w-4 animate-spin" />
+                    <span className="text-xs text-muted-foreground">Asking Claude...</span>
+                  </div>
+                </div>
+              )}
+
+              {error && (
+                <div className="flex justify-start">
+                  <div className="bg-destructive/10 text-destructive rounded-lg px-3 py-2 text-sm">
+                    {error}
                   </div>
                 </div>
               )}
@@ -215,8 +215,8 @@ export function ChatDrawer({
         </ScrollArea>
 
         {/* Input */}
-        <form onSubmit={handleSubmit} className="p-4 border-t">
-          <div className="flex gap-2">
+        <SheetFooter className="border-t p-4">
+          <form onSubmit={handleSubmit} className="flex gap-2 w-full">
             <Input
               ref={inputRef}
               value={input}
@@ -232,10 +232,10 @@ export function ChatDrawer({
                 <Send className="h-4 w-4" />
               )}
             </Button>
-          </div>
-        </form>
-      </div>
-    </>
+          </form>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
   )
 }
 

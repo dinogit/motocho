@@ -1,12 +1,12 @@
 /**
  * AI Chat service commands
  *
- * Handles streaming conversations with Claude via the Anthropic API.
- * Uses Tauri events to stream response chunks back to the frontend.
+ * Invokes Claude Code CLI to answer questions about transcript content.
+ * Uses `claude --print` for non-interactive responses.
  */
 
 use serde::{Deserialize, Serialize};
-use std::env;
+use std::process::Command;
 
 // ============================================================================
 // Type Definitions
@@ -18,82 +18,52 @@ pub struct ChatMessage {
     pub content: String,
 }
 
-#[derive(Debug, Serialize)]
-pub struct ChatStreamEvent {
-    #[serde(rename = "type")]
-    pub event_type: String, // "text", "tool_use", "complete", "error"
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub content: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub delta: Option<String>,
-}
-
-// ============================================================================
-// Helper Functions
-// ============================================================================
-
-fn get_api_key() -> Result<String, String> {
-    env::var("ANTHROPIC_API_KEY").or_else(|_| {
-        // Try to read from ~/.claude/config.json
-        let home = dirs::home_dir().ok_or_else(|| "Could not determine home directory".to_string())?;
-        let config_path = home.join(".claude").join("config.json");
-
-        if config_path.exists() {
-            if let Ok(content) = std::fs::read_to_string(&config_path) {
-                if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
-                    if let Some(api_key) = json.get("apiKey").and_then(|v| v.as_str()) {
-                        return Ok(api_key.to_string());
-                    }
-                }
-            }
-        }
-
-        Err("ANTHROPIC_API_KEY not found".to_string())
-    })
-}
-
 // ============================================================================
 // Tauri Commands
 // ============================================================================
 
-/// Start a chat stream session
-/// Streams response via window.emit("chat-stream", event)
-/// Note: Requires reqwest HTTP client for API calls
+/// Ask Claude CLI a question with context
+/// Uses `claude --print` for non-interactive response
 #[tauri::command]
-pub async fn start_chat(
-    _window: tauri::Window,
-    messages: Vec<ChatMessage>,
-    context: Option<String>,
-    _project_id: Option<String>,
-    _session_id: Option<String>,
+pub async fn ask_claude_cli(
+    context: String,
+    question: String,
+    history: Vec<ChatMessage>,
 ) -> Result<String, String> {
-    // For now, return a placeholder response
-    // Full implementation requires reqwest feature and proper streaming setup
-    let mut response = "Claude AI responses will stream here via Tauri events.".to_string();
+    // Build the prompt with context and conversation history
+    let mut prompt = format!(
+        "You are helping a user understand content from a Claude Code session transcript.\n\n\
+        ## Context (from transcript)\n```\n{}\n```\n\n",
+        context
+    );
 
-    if let Some(ctx) = context {
-        response.push_str("\n\nContext: ");
-        response.push_str(&ctx);
+    // Add conversation history if any
+    if !history.is_empty() {
+        prompt.push_str("## Previous conversation\n");
+        for msg in &history {
+            let role_label = if msg.role == "user" { "User" } else { "Assistant" };
+            prompt.push_str(&format!("{}: {}\n\n", role_label, msg.content));
+        }
     }
 
-    response.push_str(&format!("\n\nReceived {} messages", messages.len()));
+    // Add the current question
+    prompt.push_str(&format!("## Current question\n{}", question));
 
-    // TODO: Implement actual API streaming once reqwest is available
-    // This requires:
-    // 1. Adding reqwest to Cargo.toml with streaming feature
-    // 2. Reading ANTHROPIC_API_KEY from environment
-    // 3. Streaming response chunks via window.emit("chat-stream", event)
+    // Run claude --print (non-interactive mode)
+    let output = Command::new("claude")
+        .args(["--print", &prompt])
+        .output()
+        .map_err(|e| format!("Failed to run claude CLI: {}. Make sure Claude Code is installed.", e))?;
 
-    Ok(response)
-}
-
-/// Stream completion event (used for manual trigger if needed)
-#[tauri::command]
-pub async fn emit_chat_complete(
-    _window: tauri::Window,
-    _content: String,
-) -> Result<(), String> {
-    // Placeholder implementation
-    // TODO: Implement actual event emission once streaming is set up
-    Ok(())
+    if output.status.success() {
+        let response = String::from_utf8_lossy(&output.stdout).to_string();
+        if response.trim().is_empty() {
+            Err("Claude returned an empty response".to_string())
+        } else {
+            Ok(response)
+        }
+    } else {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        Err(format!("Claude CLI error: {}", stderr))
+    }
 }

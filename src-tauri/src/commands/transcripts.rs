@@ -248,28 +248,138 @@ fn parse_project_id(path: &Path) -> String {
         .to_string()
 }
 
-fn decode_project_name(encoded_name: &str) -> String {
-    // Decode encoded project names: replace dashes with slashes and extract last 2 path parts
-    // e.g., "-path-to-project" becomes "path/to/project" -> "to/project"
-    match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-        let decoded = encoded_name
-            .chars()
-            .enumerate()
-            .map(|(_, c)| if c == '-' { '/' } else { c })
-            .collect::<String>();
-
-        let parts: Vec<&str> = decoded.split('/').filter(|s| !s.is_empty()).collect();
-        if parts.len() >= 2 {
-            format!("{}/{}", parts[parts.len() - 2], parts[parts.len() - 1])
-        } else if parts.len() == 1 {
-            parts[0].to_string()
-        } else {
-            encoded_name.to_string()
+/// Resolve a human-readable display name for a project.
+///
+/// Resolution order (strict, stop at first match):
+/// 1. Git repository name from remote.origin.url (at the actual project cwd)
+/// 2. package.json "name" field (at the actual project cwd)
+/// 3. Directory basename of the actual project cwd
+/// 4. Opaque folder ID (final fallback)
+fn resolve_project_name(project_dir: &Path) -> String {
+    // Find the actual project path from session data
+    let cwd = match find_project_cwd(project_dir) {
+        Some(path) => path,
+        None => {
+            // No session data available, use opaque ID
+            return project_dir
+                .file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or("unknown")
+                .to_string();
         }
-    })) {
-        Ok(result) => result,
-        Err(_) => encoded_name.to_string(),
+    };
+
+    // 1. Try git remote name
+    if let Some(name) = git_repo_name(&cwd) {
+        return name;
     }
+
+    // 2. Try package.json name
+    if let Some(name) = package_name(&cwd) {
+        return name;
+    }
+
+    // 3. Use actual project directory basename
+    cwd.file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("unknown")
+        .to_string()
+}
+
+/// Find the actual project working directory from session files.
+/// Reads the first .jsonl file and extracts the "cwd" field.
+fn find_project_cwd(project_dir: &Path) -> Option<PathBuf> {
+    let entries = fs::read_dir(project_dir).ok()?;
+
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.extension().map(|e| e == "jsonl").unwrap_or(false) {
+            // Read first line only
+            let file = fs::File::open(&path).ok()?;
+            let reader = std::io::BufReader::new(file);
+            use std::io::BufRead;
+            if let Some(Ok(line)) = reader.lines().next() {
+                if let Ok(json) = serde_json::from_str::<serde_json::Value>(&line) {
+                    if let Some(cwd) = json.get("cwd").and_then(|v| v.as_str()) {
+                        let cwd_path = PathBuf::from(cwd);
+                        if cwd_path.exists() {
+                            return Some(cwd_path);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    None
+}
+
+/// Extract repository name from git remote.origin.url.
+/// Reads .git/config directly for determinism.
+fn git_repo_name(cwd: &Path) -> Option<String> {
+    let git_config = cwd.join(".git").join("config");
+    if !git_config.exists() {
+        return None;
+    }
+
+    let content = fs::read_to_string(&git_config).ok()?;
+
+    // Parse git config to find [remote "origin"] url
+    let mut in_origin = false;
+    for line in content.lines() {
+        let trimmed = line.trim();
+
+        if trimmed == "[remote \"origin\"]" {
+            in_origin = true;
+            continue;
+        }
+
+        if in_origin {
+            if trimmed.starts_with('[') {
+                break; // Left the section
+            }
+            if let Some(url) = trimmed.strip_prefix("url = ") {
+                return extract_repo_name(url.trim());
+            }
+        }
+    }
+
+    None
+}
+
+/// Extract repository name from a git URL.
+/// Handles: https://github.com/user/repo.git, git@github.com:user/repo.git
+fn extract_repo_name(url: &str) -> Option<String> {
+    let url = url.trim_end_matches(".git");
+
+    // SSH format: git@host:user/repo
+    if url.contains(':') && !url.contains("://") {
+        return url.rsplit(':').next()
+            .and_then(|path| path.rsplit('/').next())
+            .filter(|s| !s.is_empty())
+            .map(|s| s.to_string());
+    }
+
+    // HTTPS format: https://host/user/repo
+    url.rsplit('/').next()
+        .filter(|s| !s.is_empty())
+        .map(|s| s.to_string())
+}
+
+/// Extract name field from package.json.
+fn package_name(cwd: &Path) -> Option<String> {
+    let package_json = cwd.join("package.json");
+    if !package_json.exists() {
+        return None;
+    }
+
+    let content = fs::read_to_string(&package_json).ok()?;
+    let json: serde_json::Value = serde_json::from_str(&content).ok()?;
+
+    json.get("name")
+        .and_then(|v| v.as_str())
+        .filter(|s| !s.is_empty())
+        .map(|s| s.to_string())
 }
 
 fn parse_session_id(filename: &str) -> String {
@@ -918,7 +1028,7 @@ pub async fn get_projects() -> Result<Vec<Project>, String> {
 
         if path.is_dir() {
             let project_id = parse_project_id(&path);
-            let display_name = decode_project_name(&project_id);
+            let display_name = resolve_project_name(&path);
 
             // Count sessions
             let session_count = fs::read_dir(&path)

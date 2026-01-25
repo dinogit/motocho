@@ -9,7 +9,7 @@ import {
   PageHeader,
   PageHeaderContent,
   PageTitle,
-  PageDescription,
+  PageDescription, PageHeaderSeparator,
 } from '@/shared/components/page/page-header'
 import { Button } from '@/shared/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card'
@@ -117,12 +117,11 @@ export function Page() {
     <>
       <PageHeader>
         <PageHeaderContent>
-          <div>
-            <PageTitle>Reports</PageTitle>
-            <PageDescription>
-              Generate session reports showing what was done across your Claude Code projects
-            </PageDescription>
-          </div>
+          <PageTitle>Reports</PageTitle>
+          <PageHeaderSeparator />
+          <PageDescription>
+            Generate session reports showing what was done across your Claude Code projects
+          </PageDescription>
         </PageHeaderContent>
       </PageHeader>
 

@@ -82,8 +82,7 @@ pub fn run() {
       get_project_skills_cmd,
       bulk_copy,
       // AI Chat commands
-      start_chat,
-      emit_chat_complete,
+      ask_claude_cli,
       // Settings commands
       get_settings_data,
       update_global_settings,

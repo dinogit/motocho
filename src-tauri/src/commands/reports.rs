@@ -66,6 +66,9 @@ struct RawLogEntry {
     timestamp: String,
     #[serde(default)]
     summary: Option<String>,
+    #[serde(default)]
+    #[serde(rename = "isMeta")]
+    is_meta: Option<bool>,
     #[serde(flatten)]
     _extra: serde_json::Value,
 }
@@ -156,16 +159,24 @@ fn extract_session_description(entries: &[RawLogEntry]) -> Option<String> {
         }
     }
 
-    // Collect all user prompts and find the best one
-    let mut best_prompt: Option<String> = None;
+    // Strategy: Prefer the FIRST meaningful user prompt (usually describes the task)
+    // Only fall back to scoring if the first prompt is noise
+    let mut first_prompt: Option<String> = None;
+    let mut best_scored_prompt: Option<String> = None;
     let mut best_score = 0;
 
     for entry in entries {
+        // Skip meta messages (caveats, system notifications, etc.)
+        if entry.is_meta.unwrap_or(false) {
+            continue;
+        }
+
         if entry.entry_type == "user" {
             if let Some(message) = &entry.message {
                 let text = match &message.content {
                     Value::String(s) => Some(s.clone()),
                     Value::Array(arr) => {
+                        // Look for text blocks, skip tool_result blocks
                         arr.iter()
                             .find(|block| block.get("type").and_then(|v| v.as_str()) == Some("text"))
                             .and_then(|block| block.get("text").and_then(|v| v.as_str()))
@@ -177,10 +188,16 @@ fn extract_session_description(entries: &[RawLogEntry]) -> Option<String> {
                 if let Some(t) = text {
                     let cleaned = clean_description(&t);
                     if !cleaned.is_empty() && !is_noise(&cleaned) {
+                        // Capture the first valid prompt
+                        if first_prompt.is_none() {
+                            first_prompt = Some(cleaned.clone());
+                        }
+
+                        // Also track best scored prompt as fallback
                         let score = score_prompt(&cleaned);
                         if score > best_score {
                             best_score = score;
-                            best_prompt = Some(cleaned);
+                            best_scored_prompt = Some(cleaned);
                         }
                     }
                 }
@@ -188,41 +205,96 @@ fn extract_session_description(entries: &[RawLogEntry]) -> Option<String> {
         }
     }
 
-    best_prompt
+    // Only use first prompt if it scores reasonably well (> 0)
+    // Otherwise use the best scored prompt
+    if let Some(ref first) = first_prompt {
+        if score_prompt(first) > 0 {
+            return first_prompt;
+        }
+    }
+
+    // Fall back to best scored prompt (if it's positive)
+    if best_score > 0 {
+        return best_scored_prompt;
+    }
+
+    // No good prompts found
+    None
 }
 
-/// Score a prompt for how descriptive/useful it is
+/// Score a prompt for how descriptive/useful it is as a task summary
+/// Higher score = better task description
+/// Negative score = definitely not a good summary
 fn score_prompt(text: &str) -> i32 {
     let mut score = 0;
     let lower = text.to_lowercase();
 
-    // Prefer prompts that describe actions
-    let action_words = ["implement", "add", "create", "fix", "update", "build", "make", "set up",
-                        "configure", "integrate", "refactor", "improve", "change", "modify"];
-    for word in action_words {
-        if lower.contains(word) {
-            score += 10;
+    // === HEAVY PENALTIES for conversational/instruction patterns ===
+
+    // Instructions to Claude (not task descriptions)
+    let instruction_patterns = [
+        "go into plan mode", "enter plan mode", "plan mode",
+        "can you", "could you", "would you", "please ",
+        "i want you to", "i need you to", "i'd like you to",
+        "help me", "show me", "tell me", "explain ",
+    ];
+    for pattern in instruction_patterns {
+        if lower.starts_with(pattern) || lower.contains(pattern) {
+            score -= 30;
         }
     }
 
-    // Prefer prompts with feature-like words
-    let feature_words = ["feature", "component", "function", "api", "endpoint", "validation",
-                         "authentication", "form", "page", "button", "modal", "test"];
+    // Bug reports / questions (not summaries)
+    let question_patterns = [
+        "when i click", "when i ", "why does", "why is", "why do",
+        "how do", "how can", "what is", "what does", "what's",
+        "i don't get", "i dont get", "doesn't work", "not working",
+        "i'm getting", "i am getting", "there is an error", "there's an error",
+        "i see ", "i noticed", "i found",
+    ];
+    for pattern in question_patterns {
+        if lower.starts_with(pattern) || lower.contains(pattern) {
+            score -= 25;
+        }
+    }
+
+    // File paths in prompts usually mean it's context, not a summary
+    if lower.contains("/users/") || lower.contains("src/") || lower.contains(".tsx") || lower.contains(".ts") {
+        score -= 15;
+    }
+
+    // === BONUSES for good task description patterns ===
+
+    // Action verbs at START of text (like git commit messages)
+    let action_starts = ["implement", "add", "create", "fix", "update", "build",
+                         "refactor", "improve", "integrate", "configure", "set up",
+                         "replace", "remove", "delete", "migrate", "convert"];
+    for word in action_starts {
+        if lower.starts_with(word) {
+            score += 25;  // Strong bonus for starting with action verb
+        } else if lower.contains(word) {
+            score += 5;   // Smaller bonus for containing it
+        }
+    }
+
+    // Feature/component words
+    let feature_words = ["feature", "component", "integration", "api", "endpoint",
+                         "authentication", "dashboard", "report", "cli", "backend",
+                         "frontend", "service", "module", "system"];
     for word in feature_words {
         if lower.contains(word) {
-            score += 5;
+            score += 8;
         }
     }
 
-    // Penalize questions (often context-setting, not task description)
-    if lower.starts_with("can you") || lower.starts_with("how do") || lower.starts_with("what") {
-        score -= 5;
-    }
-
-    // Prefer medium-length prompts (not too short, not too long)
+    // Good length for a summary (concise but meaningful)
     let len = text.len();
-    if len > 30 && len < 150 {
-        score += 5;
+    if len >= 20 && len <= 80 {
+        score += 10;  // Ideal summary length
+    } else if len > 80 && len <= 150 {
+        score += 5;   // Acceptable
+    } else if len > 150 {
+        score -= 10;  // Too long, probably not a summary
     }
 
     score
@@ -296,13 +368,88 @@ fn clean_description(text: &str) -> String {
     truncated.trim().to_string()
 }
 
-/// Check if this is a noise session (just commands, init, etc)
+/// Check if this is a noise session (just commands, init, meta messages, etc)
 fn is_noise(text: &str) -> bool {
     let lower = text.to_lowercase().trim().to_string();
-    lower == "init" ||
-    lower == "/init" ||
-    lower.starts_with("/") && lower.len() < 20 ||
-    lower.len() < 5
+
+    // Too short
+    if lower.len() < 8 {
+        return true;
+    }
+
+    // Commands (slash commands)
+    if lower == "init" || lower == "/init" {
+        return true;
+    }
+    if lower.starts_with("/") && lower.len() < 25 {
+        return true;
+    }
+
+    // Claude Code built-in commands (after XML stripping these become just the command name)
+    let builtin_commands = [
+        "context", "mcp", "memory", "config", "help", "clear", "compact",
+        "cost", "doctor", "init", "login", "logout", "status", "permissions",
+        "review", "vim", "terminal-setup", "listen", "ide", "model", "tokens",
+        "allowed-tools", "hooks", "approved-paths", "pr-review", "api-key",
+        "bug", "resume", "compress", "release-notes",
+    ];
+    for cmd in builtin_commands {
+        if lower == cmd {
+            return true;
+        }
+    }
+
+    // Meta/system messages
+    let noise_patterns = [
+        "caveat:",
+        "the messages below",
+        "entered plan mode",
+        "exiting plan mode",
+        "tool_result",
+        "system-reminder",
+        "local-command-stdout",
+        "local-command-caveat",
+        "command-name",
+        "command-message",
+    ];
+    for pattern in noise_patterns {
+        if lower.starts_with(pattern) || lower.contains(pattern) {
+            return true;
+        }
+    }
+
+    // Terminal/build output patterns (pasted error logs, command output)
+    let terminal_patterns = [
+        "error ts",       // TypeScript errors
+        "elifecycle",     // npm lifecycle errors
+        "exit code",      // Command exit codes
+        "> ",             // npm script output prefix
+        "info looking",   // Tauri/build info
+        "running ",       // Build runner output
+        "found 3 errors", // Compiler error summaries
+        "compile error",
+        "⛁", "⛀", "⛶", "⛝",  // Context visualization Unicode
+    ];
+    for pattern in terminal_patterns {
+        if lower.contains(pattern) {
+            return true;
+        }
+    }
+
+    // Single word responses
+    let single_word_noise = ["yes", "no", "ok", "okay", "sure", "thanks", "continue", "proceed", "done", "good"];
+    for word in single_word_noise {
+        if lower == word {
+            return true;
+        }
+    }
+
+    // Single character or number responses
+    if lower.len() == 1 {
+        return true;
+    }
+
+    false
 }
 
 // ============================================================================
@@ -340,8 +487,13 @@ fn get_oauth_token() -> Option<String> {
 fn build_session_context(entries: &[RawLogEntry], files: &[FileChange], tools: &HashMap<String, usize>) -> String {
     let mut context = String::new();
 
-    // Add first user prompt
-    for entry in entries.iter().take(10) {
+    // Add first meaningful user prompt (skip meta messages)
+    for entry in entries.iter().take(20) {
+        // Skip meta messages
+        if entry.is_meta.unwrap_or(false) {
+            continue;
+        }
+
         if entry.entry_type == "user" {
             if let Some(message) = &entry.message {
                 let text = match &message.content {
@@ -361,7 +513,7 @@ fn build_session_context(entries: &[RawLogEntry], files: &[FileChange], tools: &
                         .take(5)
                         .collect::<Vec<_>>()
                         .join(" ");
-                    if !cleaned.trim().is_empty() {
+                    if !cleaned.trim().is_empty() && !is_noise(&cleaned) {
                         context.push_str(&format!("User request: {}\n", cleaned.chars().take(300).collect::<String>()));
                         break;
                     }
@@ -638,11 +790,15 @@ pub async fn generate_report(
                 ai_summarize_session(&context).await
                     .or_else(|| extract_session_description(&entries))
                     .or_else(|| generate_title_from_files(&files_changed))
-                    .unwrap_or_else(|| "Session activity".to_string())
             } else {
                 extract_session_description(&entries)
                     .or_else(|| generate_title_from_files(&files_changed))
-                    .unwrap_or_else(|| "Session activity".to_string())
+            };
+
+            // Skip sessions with no meaningful description (just commands, empty sessions)
+            let description = match description {
+                Some(d) => d,
+                None => continue, // Skip this session entirely
             };
 
             let session_id = path
