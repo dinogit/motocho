@@ -5,8 +5,9 @@
  */
 
 import { Link } from '@tanstack/react-router'
-import { ArrowLeft, FileText, Calendar, HardDrive, Copy, Check } from 'lucide-react'
+import { ArrowLeft, FileText, Calendar, HardDrive, Copy, Check, Download } from 'lucide-react'
 import { useState } from 'react'
+import { invoke } from '@tauri-apps/api/core'
 import { Button } from '@/shared/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card'
 import { Badge } from '@/shared/components/ui/badge'
@@ -22,6 +23,22 @@ export function PlanViewPage() {
     await navigator.clipboard.writeText(plan.content)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
+  }
+
+  const handleSave = async () => {
+    try {
+      // Sanitize plan title for filename
+      const sanitizedTitle = plan.title.replace(/[/\\]/g, '-').substring(0, 50)
+      const timestamp = new Date().toISOString().split('T')[0]
+      const defaultFilename = `plan-${sanitizedTitle}-${timestamp}.md`
+
+      await invoke('save_report', {
+        content: plan.content,
+        defaultFilename,
+      })
+    } catch (err) {
+      console.error('Failed to save:', err)
+    }
   }
 
   return (
@@ -42,19 +59,25 @@ export function PlanViewPage() {
               </h1>
               <p className="text-muted-foreground mt-1">{plan.overview}</p>
             </div>
-            <Button variant="outline" size="sm" onClick={handleCopy}>
-              {copied ? (
-                <>
-                  <Check className="h-4 w-4 mr-1" />
-                  Copied
-                </>
-              ) : (
-                <>
-                  <Copy className="h-4 w-4 mr-1" />
-                  Copy
-                </>
-              )}
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={handleCopy}>
+                {copied ? (
+                  <>
+                    <Check className="h-4 w-4 mr-1" />
+                    Copied
+                  </>
+                ) : (
+                  <>
+                    <Copy className="h-4 w-4 mr-1" />
+                    Copy
+                  </>
+                )}
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleSave}>
+                <Download className="mr-2 h-4 w-4" />
+                Save as .md
+              </Button>
+            </div>
           </div>
 
           {/* Metadata */}
