@@ -43,15 +43,6 @@ export function TranscriptViewer({
         onDelete={onDelete}
       />
 
-      {session.stats?.health && (
-        <div className="px-4 pb-2">
-          <UserHealthCard
-            health={session.stats.health}
-            toolBreakdown={session.stats.toolBreakdown}
-          />
-        </div>
-      )}
-
       <ScrollArea className="flex-1">
         <div className="space-y-4 pb-4">
           {messages.slice().reverse().map((message) => {

@@ -142,7 +142,7 @@ export function UserHealthCard({ health, toolBreakdown }: UserHealthCardProps) {
                 )}
 
                 {(() => {
-                    const diagnosis = getDiagnosis(health, toolBreakdown);
+                    const diagnosis = getDiagnosis(health);
                     if (!diagnosis) return null;
 
                     return (
