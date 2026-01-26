@@ -17,6 +17,8 @@ use std::process::Command;
 use tauri_plugin_dialog::DialogExt;
 use tokio::io::{AsyncBufReadExt, BufReader};
 
+use crate::commands::work_unit_builder::{SummaryEmitter, WorkUnitBuilder};
+
 // ============================================================================
 // Type Definitions
 // ============================================================================
@@ -594,133 +596,90 @@ fn type_to_category(work_type: &str) -> &'static str {
 // ============================================================================
 
 /// Generate human-readable work summary from work groups without AI.
-/// Groups files by directory/feature and produces semantic descriptions.
+/// Uses deterministic WorkUnit-based semantic classification.
+/// Produces outcome-level summaries instead of operation-level noise.
 fn generate_work_summary(groups: &[WorkGroup]) -> String {
-    let mut bullets: Vec<String> = Vec::new();
+    // Separate file changes from other operations
+    let file_groups: Vec<WorkGroup> = groups
+        .iter()
+        .filter(|g| g.work_type == "file_created" || g.work_type == "file_modified")
+        .cloned()
+        .collect();
 
-    // Group files by parent directory for feature detection
-    let mut by_directory: HashMap<String, Vec<&WorkGroup>> = HashMap::new();
-    let mut commands: Vec<&WorkGroup> = Vec::new();
-    let mut features: Vec<&WorkGroup> = Vec::new();
+    // Build semantic work units (outcome-level changes)
+    let work_units = WorkUnitBuilder::build(&file_groups);
 
-    for group in groups {
-        match group.work_type.as_str() {
-            "file_created" | "file_modified" => {
-                // Extract parent directory as feature hint
-                let dir = group.subject
-                    .rsplit('/')
-                    .nth(1)
-                    .unwrap_or("root")
-                    .to_string();
-                by_directory.entry(dir).or_default().push(group);
-            }
-            "git_commit" | "git_push" | "git_branch" | "git_merge" => {
-                commands.push(group);
-            }
-            "dependency_added" => {
-                features.push(group);
-            }
-            _ => {}
-        }
+    // Emit summary bullets with verb control and invariants
+    let work_unit_bullets = SummaryEmitter::emit(&work_units);
+
+    let mut result = String::from("Work completed in this period:\n");
+
+    // Add work unit bullets
+    for bullet in work_unit_bullets {
+        result.push_str(&format!("- {}\n", bullet));
     }
 
-    // Convert directory groups into feature bullets
-    for (dir, files) in by_directory.iter() {
-        let total_edits: usize = files.iter().map(|f| f.count).sum();
-        let file_count = files.len();
-
-        // Determine action based on file types
-        let has_created = files.iter().any(|f| f.work_type == "file_created");
-        let action = if has_created && file_count > 1 {
-            "Implemented"
-        } else if total_edits > 5 {
-            "Refactored"
-        } else {
-            "Updated"
-        };
-
-        // Convert directory name to feature name
-        let feature_name = humanize_directory(dir);
-
-        if file_count == 1 {
-            let file = files[0];
-            let filename = file.subject.rsplit('/').next().unwrap_or(&file.subject);
-            bullets.push(format!("{} {}", action, humanize_filename(filename)));
-        } else {
-            bullets.push(format!("{} {} ({} files)", action, feature_name, file_count));
-        }
-    }
-
-    // Add git operations
-    for cmd in commands {
-        match cmd.work_type.as_str() {
-            "git_commit" => {
-                if cmd.subject != "committed changes" {
-                    bullets.push(format!("Committed: {}", cmd.subject));
-                }
-            }
-            "git_push" => bullets.push("Pushed changes to remote".to_string()),
-            "git_branch" => bullets.push(format!("Created branch {}", cmd.subject)),
-            _ => {}
-        }
+    // Add git operations (explicit actions, not summarized)
+    let git_bullets = extract_git_bullets(groups);
+    for bullet in git_bullets {
+        result.push_str(&format!("- {}\n", bullet));
     }
 
     // Add dependencies
-    for feat in features {
-        bullets.push(format!("Added dependency {}", feat.subject));
-    }
-
-    // Limit to top 15 bullets
-    bullets.truncate(15);
-
-    if bullets.is_empty() {
-        return "No significant work items found in this period.".to_string();
-    }
-
-    let mut result = String::from("Work completed in this period:\n");
-    for bullet in bullets {
+    let dep_bullets = extract_dependency_bullets(groups);
+    for bullet in dep_bullets {
         result.push_str(&format!("- {}\n", bullet));
+    }
+
+    // If everything is empty, return placeholder
+    if result == "Work completed in this period:\n" {
+        return "No significant work items found in this period.".to_string();
     }
 
     result
 }
 
-/// Convert directory name to human-readable feature name
-fn humanize_directory(dir: &str) -> String {
-    // Common patterns
-    let dir = dir.trim_start_matches('_');
+/// Extract explicit git operation bullets
+fn extract_git_bullets(groups: &[WorkGroup]) -> Vec<String> {
+    let mut bullets = Vec::new();
 
-    // Handle _components pattern
-    if dir == "components" || dir.ends_with("-components") {
-        return "components".to_string();
+    for group in groups {
+        match group.work_type.as_str() {
+            "git_commit" => {
+                if group.subject != "committed changes" {
+                    bullets.push(format!("Committed: {}", group.subject));
+                }
+            }
+            "git_push" => {
+                bullets.push("Pushed changes to remote".to_string());
+            }
+            "git_branch" => {
+                bullets.push(format!("Created branch {}", group.subject));
+            }
+            "git_merge" => {
+                bullets.push(format!("Merged {}", group.subject));
+            }
+            _ => {}
+        }
     }
 
-    // Convert kebab-case to Title Case
-    dir.split('-')
-        .map(|word| {
-            let mut chars: Vec<char> = word.chars().collect();
-            if let Some(first) = chars.first_mut() {
-                *first = first.to_ascii_uppercase();
-            }
-            chars.into_iter().collect::<String>()
-        })
-        .collect::<Vec<_>>()
-        .join(" ")
-        .to_lowercase()
+    bullets
 }
 
-/// Convert filename to human-readable description
-fn humanize_filename(filename: &str) -> String {
-    let name = filename
-        .trim_end_matches(".tsx")
-        .trim_end_matches(".ts")
-        .trim_end_matches(".rs")
-        .trim_end_matches(".json")
-        .trim_end_matches(".md");
+/// Extract dependency addition bullets
+fn extract_dependency_bullets(groups: &[WorkGroup]) -> Vec<String> {
+    let mut bullets = Vec::new();
 
-    // Convert kebab-case or snake_case to readable
-    name.replace('-', " ").replace('_', " ")
+    for group in groups {
+        if group.work_type == "dependency_added" {
+            bullets.push(format!("Added dependency: {}", group.subject));
+        }
+    }
+
+    bullets
 }
+
+
 
 // ============================================================================
 // AI Formatting (Optional)

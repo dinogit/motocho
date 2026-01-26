@@ -17,6 +17,7 @@ pub mod library;
 pub mod agents;
 pub mod commands;
 pub mod plugins;
+pub mod work_unit_builder;
 pub mod reports;
 pub mod auth;
 
