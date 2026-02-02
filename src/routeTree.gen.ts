@@ -14,6 +14,7 @@ import { Route as ReportsRouteImport } from './routes/reports'
 import { Route as PluginsRouteImport } from './routes/plugins'
 import { Route as McpRouteImport } from './routes/mcp'
 import { Route as HistoryRouteImport } from './routes/history'
+import { Route as DocsRouteImport } from './routes/docs'
 import { Route as CommandsRouteImport } from './routes/commands'
 import { Route as ClaudeCodeRouteImport } from './routes/claude-code'
 import { Route as AnalyticsRouteImport } from './routes/analytics'
@@ -59,6 +60,11 @@ const McpRoute = McpRouteImport.update({
 const HistoryRoute = HistoryRouteImport.update({
   id: '/history',
   path: '/history',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DocsRoute = DocsRouteImport.update({
+  id: '/docs',
+  path: '/docs',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CommandsRoute = CommandsRouteImport.update({
@@ -176,6 +182,7 @@ export interface FileRoutesByFullPath {
   '/analytics': typeof AnalyticsRoute
   '/claude-code': typeof ClaudeCodeRoute
   '/commands': typeof CommandsRoute
+  '/docs': typeof DocsRoute
   '/history': typeof HistoryRoute
   '/mcp': typeof McpRoute
   '/plugins': typeof PluginsRouteWithChildren
@@ -204,6 +211,7 @@ export interface FileRoutesByTo {
   '/analytics': typeof AnalyticsRoute
   '/claude-code': typeof ClaudeCodeRoute
   '/commands': typeof CommandsRoute
+  '/docs': typeof DocsRoute
   '/history': typeof HistoryRoute
   '/mcp': typeof McpRoute
   '/reports': typeof ReportsRoute
@@ -232,6 +240,7 @@ export interface FileRoutesById {
   '/analytics': typeof AnalyticsRoute
   '/claude-code': typeof ClaudeCodeRoute
   '/commands': typeof CommandsRoute
+  '/docs': typeof DocsRoute
   '/history': typeof HistoryRoute
   '/mcp': typeof McpRoute
   '/plugins': typeof PluginsRouteWithChildren
@@ -262,6 +271,7 @@ export interface FileRouteTypes {
     | '/analytics'
     | '/claude-code'
     | '/commands'
+    | '/docs'
     | '/history'
     | '/mcp'
     | '/plugins'
@@ -290,6 +300,7 @@ export interface FileRouteTypes {
     | '/analytics'
     | '/claude-code'
     | '/commands'
+    | '/docs'
     | '/history'
     | '/mcp'
     | '/reports'
@@ -317,6 +328,7 @@ export interface FileRouteTypes {
     | '/analytics'
     | '/claude-code'
     | '/commands'
+    | '/docs'
     | '/history'
     | '/mcp'
     | '/plugins'
@@ -346,6 +358,7 @@ export interface RootRouteChildren {
   AnalyticsRoute: typeof AnalyticsRoute
   ClaudeCodeRoute: typeof ClaudeCodeRoute
   CommandsRoute: typeof CommandsRoute
+  DocsRoute: typeof DocsRoute
   HistoryRoute: typeof HistoryRoute
   McpRoute: typeof McpRoute
   PluginsRoute: typeof PluginsRouteWithChildren
@@ -401,6 +414,13 @@ declare module '@tanstack/react-router' {
       path: '/history'
       fullPath: '/history'
       preLoaderRoute: typeof HistoryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/docs': {
+      id: '/docs'
+      path: '/docs'
+      fullPath: '/docs'
+      preLoaderRoute: typeof DocsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/commands': {
@@ -583,6 +603,7 @@ const rootRouteChildren: RootRouteChildren = {
   AnalyticsRoute: AnalyticsRoute,
   ClaudeCodeRoute: ClaudeCodeRoute,
   CommandsRoute: CommandsRoute,
+  DocsRoute: DocsRoute,
   HistoryRoute: HistoryRoute,
   McpRoute: McpRoute,
   PluginsRoute: PluginsRouteWithChildren,

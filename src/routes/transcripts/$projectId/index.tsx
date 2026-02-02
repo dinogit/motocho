@@ -19,7 +19,8 @@ import {
   PageHeader,
   PageHeaderContent,
   PageTitle,
-  PageDescription, PageHeaderSeparator,
+  PageDescription,
+  PageHeaderSeparator,
 } from '@/shared/components/page/page-header'
 
 function decodeProjectName(encodedName: string): string {
@@ -61,8 +62,6 @@ function PageComponent() {
     loadProjectData()
   }, [projectId])
 
-  console.log({ stats, projectName, sessions })
-
   if (isLoading) {
     return (
       <>
@@ -101,8 +100,11 @@ function PageComponent() {
           </span>
         </div>
 
-        {/* Session list */}
-        <SessionList sessions={sessions} projectId={projectId} />
+        {/* Session list - presentation mode (default) */}
+        <SessionList
+          sessions={sessions}
+          projectId={projectId}
+        />
       </div>
     </>
   )

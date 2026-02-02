@@ -338,8 +338,8 @@ function normalizeContent(
         const commandMatch = text.match(/<command-name>(.*?)<\/command-name>/)
         if (commandMatch) {
           const commandName = commandMatch[1]
-          const messageMatch = block.text.match(/<command-message>(.*?)<\/command-message>/)
-          const message = messageMatch ? messageMatch[1] : block.text
+          const messageMatch = text.match(/<command-message>(.*?)<\/command-message>/)
+          const message = messageMatch ? messageMatch[1] : text
 
           return {
             type: 'tool_use',

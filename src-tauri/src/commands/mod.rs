@@ -20,6 +20,7 @@ pub mod plugins;
 pub mod work_unit_builder;
 pub mod reports;
 pub mod auth;
+pub mod docs;
 
 // Re-export all commands
 pub use fs_utils::*;
@@ -38,3 +39,4 @@ pub use commands::*;
 pub use plugins::*;
 pub use reports::*;
 pub use auth::*;
+pub use docs::*;

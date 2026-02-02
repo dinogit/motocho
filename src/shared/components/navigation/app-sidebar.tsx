@@ -13,22 +13,20 @@ import { useState, useEffect } from "react"
 import { IconChartBar } from "@tabler/icons-react"
 import {
   FlipVertical2,
-  Wrench,
   Search,
-  Plug,
   FolderOpen,
   FileText,
   FileClock,
-  Sparkles,
-  Bot,
   Settings,
-  Terminal,
-  Webhook,
-  Package,
+  BookOpen,
+  Bot,
   ClipboardList,
+  SunIcon,
+  MoonIcon,
 } from "lucide-react"
 
 import { NavMain, type NavItem } from "@/shared/components/navigation/nav-main"
+import { NavExplore } from "@/shared/components/navigation/nav-explore"
 import {
   Sidebar,
   SidebarContent,
@@ -51,6 +49,7 @@ import { invoke } from "@tauri-apps/api/core"
 import { LogIn, User, ChevronUp, Moon, Sun, Monitor } from "lucide-react"
 import type { Project } from "@/shared/types/transcripts.ts"
 import { useTheme } from "@/shared/components/effects/theme-provider"
+import { Swap, SwapOff, SwapOn } from "../ui/swap"
 
 interface AuthStatus {
   authenticated: boolean
@@ -87,39 +86,9 @@ const staticNavItems: NavItem[] = [
     icon: FileClock,
   },
   {
-    title: "Tools",
-    url: "/claude-code",
-    icon: Wrench,
-  },
-  {
-    title: "MCP",
-    url: "/mcp",
-    icon: Plug,
-  },
-  {
-    title: "Skills",
-    url: "/skills",
-    icon: Sparkles,
-  },
-  {
-    title: "Agents",
-    url: "/agents",
-    icon: Bot,
-  },
-  {
-    title: "Commands",
-    url: "/commands",
-    icon: Terminal,
-  },
-  {
-    title: "Plugins",
-    url: "/plugins",
-    icon: Package,
-  },
-  {
-    title: "Hooks",
-    url: "/hooks",
-    icon: Webhook,
+    title: "Documentation",
+    url: "/docs",
+    icon: BookOpen,
   },
   {
     title: "Reports",
@@ -131,7 +100,7 @@ const staticNavItems: NavItem[] = [
     url: "/settings",
     icon: Settings,
   },
-]
+];
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const [navItems, setNavItems] = useState<NavItem[]>(staticNavItems)
@@ -193,7 +162,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         newNavItems.splice(2, 0, projectsNavItem)
 
         setNavItems(newNavItems)
-        console.log("[AppSidebar] Nav items updated with projects")
       } catch (error) {
         console.error("[AppSidebar] Failed to load projects:", error)
         // Keep static nav items on error - this is safe fallback
@@ -214,7 +182,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             >
               <a href="/">
                 <Bot className="!size-5" />
-                <span className="text-base font-semibold">Claude Code UI</span>
+                <span className="text-base font-semibold">Motochō</span>
               </a>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -222,42 +190,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={navItems} />
+        <NavExplore />
       </SidebarContent>
       <SidebarFooter>
         <SidebarMenu>
-          {/* Theme Selector */}
-          <SidebarMenuItem>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <SidebarMenuButton>
-                  <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-                  <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-                  <span>Theme</span>
-                  <ChevronUp className="ml-auto" />
-                </SidebarMenuButton>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                side="top"
-                className="w-[--radix-popper-anchor-width]"
-              >
-                <DropdownMenuItem onClick={() => setTheme("light")}>
-                  <Sun className="mr-2 h-4 w-4" />
-                  <span>Light</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setTheme("dark")}>
-                  <Moon className="mr-2 h-4 w-4" />
-                  <span>Dark</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setTheme("system")}>
-                  <Monitor className="mr-2 h-4 w-4" />
-                  <span>System</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </SidebarMenuItem>
 
-          {/* Auth Status */}
-          <SidebarMenuItem>
+          <SidebarMenuItem className="flex flex-row justify-between space-x-4">
+
             {authStatus?.authenticated ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -293,6 +232,21 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 <span>Login to Claude</span>
               </SidebarMenuButton>
             )}
+
+            <Swap
+              animation="rotate"
+              className="size-8 rounded-lg border bg-muted/50 hover:bg-muted"
+              onSwappedChange={(swapped) => {
+                setTheme(swapped ? "dark" : "light")
+              }}
+            >
+              <SwapOn>
+                <SunIcon className="size-4" />
+              </SwapOn>
+              <SwapOff>
+                <MoonIcon className="size-4" />
+              </SwapOff>
+            </Swap>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>

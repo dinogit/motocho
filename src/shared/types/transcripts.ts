@@ -186,6 +186,18 @@ export interface SessionStats {
   gitBranch?: string
   health?: SessionHealth
   toolBreakdown?: Record<string, number>
+  techStack?: TechStack
+}
+
+export interface TechStack {
+  languages: LanguageInfo[]
+  totalFiles: number
+}
+
+export interface LanguageInfo {
+  name: string
+  framework?: string
+  fileCount: number
 }
 
 export interface SessionHealth {
@@ -193,6 +205,6 @@ export interface SessionHealth {
   toolCallsPerPrompt: number
   assistantMessagesPerPrompt: number
   tokensPerMinute: number
-  status: 'healthy' | 'stalled' | 'frantic' | 'expensive' | 'looping' | 'exploding'
+  status: 'healthy' | 'stalled' | 'frantic' | 'expensive' | 'looping' | 'exploding' | 'heavy'
   verdict: 'continue' | 'constrain' | 'restart'
 }

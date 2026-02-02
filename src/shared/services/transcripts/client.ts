@@ -158,3 +158,100 @@ export async function getAgentTranscript(
     throw error
   }
 }
+/**
+ * Get all messages for a session (no pagination)
+ */
+export async function getAllSessionMessages(
+  projectId: string,
+  sessionId: string,
+): Promise<Message[]> {
+  try {
+    return await invoke<Message[]>('get_all_session_messages', {
+      projectId,
+      sessionId,
+    })
+  } catch (error) {
+    console.error('[Transcripts] Failed to get all session messages:', error)
+    return []
+  }
+}
+
+/**
+ * Generate project documentation (legacy - uses reports.rs)
+ */
+export async function generateProjectDocumentation(projectId: string, sessionIds: string[], useAi: boolean = false): Promise<any> {
+  try {
+    return await invoke('generate_project_documentation', { projectId, sessionIds, useAi })
+  } catch (error) {
+    console.error('[Transcripts] Failed to generate project documentation:', error)
+    throw error
+  }
+}
+
+/**
+ * Status of documentation generation
+ * - success: AI successfully generated documentation with clear intent
+ * - no_files_found: No documentable files in selected sessions
+ * - fallback_used: AI unavailable, used deterministic fallback
+ * - weak_intent: Generated but with limited intent data (AI handled gracefully)
+ */
+export type GenerationStatus = 'success' | 'no_files_found' | 'fallback_used' | 'weak_intent'
+
+export interface DocumentationResult {
+  projectName: string
+  markdown: string
+  sessionCount: number
+  fileCount: number
+  /** Status of the generation */
+  status: GenerationStatus
+  /** Debug info (in development builds only) */
+  debugInfo?: string
+}
+
+export type DocAudience = 'engineer' | 'business' | 'agent'
+
+/**
+ * Generate rich project documentation using AI
+ * @param audience - Target audience: 'engineer' (technical docs), 'business' (stakeholder summary), 'agent' (CLAUDE.md context)
+ * @param customPrompt - Optional custom prompt to use instead of the default
+ */
+export async function generateDocumentation(
+  projectId: string,
+  sessionIds: string[],
+  useAi: boolean = true,
+  audience: DocAudience = 'engineer',
+  customPrompt?: string
+): Promise<DocumentationResult> {
+  try {
+    return await invoke<DocumentationResult>('generate_documentation', {
+      projectId,
+      sessionIds,
+      useAi,
+      audience,
+      customPrompt,
+    })
+  } catch (error) {
+    console.error('[Transcripts] Failed to generate documentation:', error)
+    throw error
+  }
+}
+
+/**
+ * Get the prompt template for documentation generation (for preview/editing)
+ */
+export async function getDocumentationPrompt(
+  projectId: string,
+  sessionIds: string[],
+  audience: DocAudience = 'engineer'
+): Promise<string> {
+  try {
+    return await invoke<string>('get_documentation_prompt', {
+      projectId,
+      sessionIds,
+      audience,
+    })
+  } catch (error) {
+    console.error('[Transcripts] Failed to get documentation prompt:', error)
+    throw error
+  }
+}

@@ -13,9 +13,8 @@ import {
   RefreshCw,
   Trash2,
   Loader2,
-  Activity,
 } from "lucide-react"
-import { cn } from "@/shared/lib/utils"
+import { Icon } from "@iconify/react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card"
 import { Button } from "@/shared/components/ui/button"
 import {
@@ -30,6 +29,7 @@ import {
   AlertDialogTrigger,
 } from "@/shared/components/ui/alert-dialog"
 import type { Session } from "@/shared/types/transcripts"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/shared/components/ui/tooltip"
 
 interface SessionCardProps {
   session: Session
@@ -51,6 +51,69 @@ function formatDuration(ms: number): string {
     return `${minutes}m ${seconds % 60}s`
   }
   return `${seconds}s`
+}
+
+const languageIconMap: Record<string, string> = {
+  // Languages
+  typescript: "catppuccin:typescript",
+  javascript: "catppuccin:javascript",
+  rust: "catppuccin:rust",
+  python: "catppuccin:python",
+  go: "catppuccin:go",
+  java: "catppuccin:java",
+  ruby: "catppuccin:ruby",
+  php: "catppuccin:php",
+  swift: "catppuccin:swift",
+  kotlin: "catppuccin:kotlin",
+  css: "catppuccin:css",
+  html: "catppuccin:html",
+  json: "catppuccin:json",
+  yaml: "catppuccin:yaml",
+  toml: "catppuccin:toml",
+  markdown: "catppuccin:markdown",
+  c: "catppuccin:c",
+  cpp: "catppuccin:cpp",
+  "c++": "catppuccin:cpp",
+  csharp: "catppuccin:csharp",
+  "c#": "catppuccin:csharp",
+  dart: "catppuccin:dart",
+  lua: "catppuccin:lua",
+  perl: "catppuccin:perl",
+  bash: "catppuccin:bash",
+  shell: "catppuccin:bash",
+  // Frameworks & Tools
+  ".net": "catppuccin:dotnet",
+  dotnet: "catppuccin:dotnet",
+  react: "catppuccin:react",
+  "next.js": "catppuccin:next",
+  nextjs: "catppuccin:next",
+  angular: "catppuccin:angular",
+  vue: "catppuccin:vue",
+  svelte: "catppuccin:svelte",
+  astro: "catppuccin:astro",
+  express: "catppuccin:nodejs",
+  node: "catppuccin:nodejs",
+  nodejs: "catppuccin:nodejs",
+  django: "catppuccin:django",
+  flask: "catppuccin:flask",
+  rails: "catppuccin:rails",
+  laravel: "catppuccin:laravel",
+  spring: "catppuccin:spring",
+  tauri: "catppuccin:tauri",
+  electron: "catppuccin:electron",
+  docker: "catppuccin:docker",
+  graphql: "catppuccin:graphql",
+  prisma: "catppuccin:prisma",
+  sass: "catppuccin:sass",
+  scss: "catppuccin:sass",
+  less: "catppuccin:less",
+  tailwind: "catppuccin:tailwindcss",
+  tailwindcss: "catppuccin:tailwindcss",
+}
+
+function getLanguageIcon(langName: string): string | null {
+  const key = langName.toLowerCase().replace(/\s+/g, "")
+  return languageIconMap[key] ?? null
 }
 
 export function SessionCard({
@@ -195,6 +258,40 @@ export function SessionCard({
               <span className="flex items-center gap-1.5 bg-muted/50 px-2 py-1 rounded">
                 <GitBranch className="h-3 w-3 text-red-500" />
                 <span className="text-foreground/70">{stats.gitBranch}</span>
+              </span>
+            )}
+            {stats?.techStack && stats.techStack.languages.length > 0 && (
+              <span className="flex items-center gap-1.5 bg-muted/50 px-2 py-1 rounded">
+                {stats.techStack.languages.map((lang) => {
+                  const langIcon = getLanguageIcon(lang.name)
+                  const frameworkIcon = lang.framework ? getLanguageIcon(lang.framework) : null
+                  return (
+                    <span key={lang.name} className="flex items-center gap-1">
+                      {langIcon ? (
+                        <Tooltip>
+                          <TooltipTrigger>
+                            <span><Icon icon={langIcon} className="h-4 w-4" /></span>
+                          </TooltipTrigger>
+                          <TooltipContent><p>{lang.name}</p></TooltipContent>
+                        </Tooltip>
+                      ) : (
+                        <span className="text-foreground/70 text-xs">{lang.name}</span>
+                      )}
+                      {lang.framework && (
+                        frameworkIcon ? (
+                          <Tooltip>
+                            <TooltipTrigger>
+                              <span><Icon icon={frameworkIcon} className="h-4 w-4" /></span>
+                            </TooltipTrigger>
+                            <TooltipContent><p>{lang.framework}</p></TooltipContent>
+                          </Tooltip>
+                        ) : (
+                          <span className="text-foreground/70 text-xs">{lang.framework}</span>
+                        )
+                      )}
+                    </span>
+                  )
+                })}
               </span>
             )}
           </div>

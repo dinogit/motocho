@@ -3,7 +3,6 @@ import { cn } from '@/shared/lib/utils'
 import { Card, CardContent } from '@/shared/components/ui/card'
 import { Avatar, AvatarFallback } from '@/shared/components/ui/avatar'
 import { Badge } from '@/shared/components/ui/badge'
-import { Button } from '@/shared/components/ui/button'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/shared/components/ui/tooltip'
 import { ContentBlockRenderer } from './content-block-renderer'
 
@@ -46,15 +45,6 @@ export function MessageBlock({ message, onAsk, projectId, sessionId }: MessageBl
           </Tooltip>
         </TooltipProvider>
 
-        {/*<div className="flex-1">*/}
-        {/*  <div className="flex items-center gap-2 mb-1 text-xs text-muted-foreground">*/}
-        {/*    <span className="font-medium">System Hook</span>*/}
-        {/*    {message.timestamp && (*/}
-        {/*      <span className="text-[10px]">{new Date(message.timestamp).toLocaleTimeString()}</span>*/}
-        {/*    )}*/}
-        {/*  </div>*/}
-        {/*  */}
-        {/*</div>*/}
         <div className="flex-1">
           <HookBlock
             hookEvent={hookBlock?.hookEvent}
@@ -175,26 +165,7 @@ export function MessageBlock({ message, onAsk, projectId, sessionId }: MessageBl
               </TooltipProvider>
             )}
             {/* Ask button for assistant messages */}
-            {!isUser && onAsk && (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="ml-auto h-7 px-2 hover:bg-primary/10"
-                      onClick={handleAskMessage}
-                    >
-                      <MessageSquare className="h-4 w-4 text-primary" />
-                      <span className="ml-1 text-xs">Ask</span>
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Ask Claude about this response</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            )}
+
           </div>
 
           <div className="space-y-3">

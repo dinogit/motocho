@@ -15,6 +15,7 @@ Before starting any non-trivial task, ALWAYS provide:
 
 Estimated complexity: Simple / Medium / Complex
 Estimated token cost: Low (~5K) / Medium (~15K) / High (~30K+)
+How much token I have left before limit hits.
 Files to modify: List the files you expect to touch
 Approach summary: 1-2 sentences on your plan
 If you are unsure of these, ask for clarification.

@@ -75,6 +75,23 @@ pub struct SessionStats {
     pub health: Option<SessionHealth>,
     #[serde(rename = "toolBreakdown")]
     pub tool_breakdown: Option<HashMap<String, usize>>,
+    #[serde(rename = "techStack")]
+    pub tech_stack: Option<TechStack>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TechStack {
+    pub languages: Vec<LanguageInfo>,
+    #[serde(rename = "totalFiles")]
+    pub total_files: usize,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LanguageInfo {
+    pub name: String,           // "TypeScript", "Rust", "Python", etc.
+    pub framework: Option<String>, // "React", "Tauri", "FastAPI", etc.
+    #[serde(rename = "fileCount")]
+    pub file_count: usize,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -830,6 +847,113 @@ fn extract_agent_id(value: &Value) -> Option<String> {
     }
 }
 
+/// Map extension to language name and optional framework
+fn ext_to_language(ext: &str, ext_counts: &HashMap<String, usize>) -> (String, Option<String>) {
+    match ext {
+        "ts" | "tsx" => {
+            let has_tsx = ext_counts.get("tsx").copied().unwrap_or(0) > 0;
+            ("TypeScript".to_string(), if has_tsx { Some("React".to_string()) } else { None })
+        }
+        "js" | "jsx" => {
+            let has_jsx = ext_counts.get("jsx").copied().unwrap_or(0) > 0;
+            ("JavaScript".to_string(), if has_jsx { Some("React".to_string()) } else { None })
+        }
+        "rs" => ("Rust".to_string(), None),
+        "py" => ("Python".to_string(), None),
+        "go" => ("Go".to_string(), None),
+        "cs" => ("C#".to_string(), Some(".NET".to_string())),
+        "java" => ("Java".to_string(), None),
+        "kt" | "kts" => ("Kotlin".to_string(), None),
+        "swift" => ("Swift".to_string(), None),
+        "rb" => ("Ruby".to_string(), None),
+        "php" => ("PHP".to_string(), None),
+        "vue" => ("Vue".to_string(), Some("Vue.js".to_string())),
+        "svelte" => ("Svelte".to_string(), Some("Svelte".to_string())),
+        "css" | "scss" | "sass" => ("CSS".to_string(), None),
+        "html" => ("HTML".to_string(), None),
+        "md" | "mdx" => ("Markdown".to_string(), None),
+        "json" => ("JSON".to_string(), None),
+        "yaml" | "yml" => ("YAML".to_string(), None),
+        "toml" => ("TOML".to_string(), None),
+        "sql" => ("SQL".to_string(), None),
+        "sh" | "bash" | "zsh" => ("Shell".to_string(), None),
+        _ => (ext.to_uppercase(), None),
+    }
+}
+
+/// Detect tech stack from Write/Edit tool calls - returns all languages used
+fn detect_tech_stack(entries: &[RawLogEntry]) -> Option<TechStack> {
+    let mut ext_counts: HashMap<String, usize> = HashMap::new();
+
+    for entry in entries {
+        if entry.entry_type != "assistant" {
+            continue;
+        }
+
+        if let Some(message) = &entry.message {
+            if let Value::Array(arr) = &message.content {
+                for block in arr {
+                    if block.get("type").and_then(|v| v.as_str()) != Some("tool_use") {
+                        continue;
+                    }
+
+                    let tool_name = block.get("name").and_then(|n| n.as_str()).unwrap_or("");
+                    if tool_name != "Write" && tool_name != "Edit" {
+                        continue;
+                    }
+
+                    if let Some(file_path) = block
+                        .get("input")
+                        .and_then(|i| i.get("file_path"))
+                        .and_then(|p| p.as_str())
+                    {
+                        if let Some(ext) = file_path.rsplit('.').next() {
+                            let ext_lower = ext.to_lowercase();
+                            *ext_counts.entry(ext_lower).or_insert(0) += 1;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if ext_counts.is_empty() {
+        return None;
+    }
+
+    // Group extensions by language (e.g., ts+tsx = TypeScript)
+    let mut lang_counts: HashMap<String, (Option<String>, usize)> = HashMap::new();
+
+    for (ext, count) in &ext_counts {
+        let (lang_name, framework) = ext_to_language(ext, &ext_counts);
+        let entry = lang_counts.entry(lang_name).or_insert((None, 0));
+        entry.1 += count;
+        // Keep framework if detected
+        if framework.is_some() {
+            entry.0 = framework;
+        }
+    }
+
+    // Convert to sorted vec (by file count descending)
+    let mut languages: Vec<LanguageInfo> = lang_counts
+        .into_iter()
+        .map(|(name, (framework, file_count))| LanguageInfo {
+            name,
+            framework,
+            file_count,
+        })
+        .collect();
+
+    languages.sort_by(|a, b| b.file_count.cmp(&a.file_count));
+
+    let total_files: usize = languages.iter().map(|l| l.file_count).sum();
+
+    Some(TechStack {
+        languages,
+        total_files,
+    })
+}
+
 fn calculate_session_stats(entries: &[RawLogEntry], total_cost: f64, total_tokens: u64) -> SessionStats {
     let mut prompt_count = 0;
     let mut tool_call_count = 0;
@@ -897,6 +1021,8 @@ fn calculate_session_stats(entries: &[RawLogEntry], total_cost: f64, total_token
         total_tokens,
     ));
 
+    let tech_stack = detect_tech_stack(entries);
+
     SessionStats {
         prompt_count,
         message_count,
@@ -909,6 +1035,7 @@ fn calculate_session_stats(entries: &[RawLogEntry], total_cost: f64, total_token
         git_branch,
         health,
         tool_breakdown: Some(tool_counts),
+        tech_stack,
     }
 }
 
@@ -1703,4 +1830,111 @@ pub async fn delete_session(project_id: String, session_id: String) -> Result<bo
         .map_err(|e| format!("Failed to delete session: {}", e))?;
 
     Ok(true)
+}
+
+/// Get all messages for a session (no pagination)
+#[tauri::command]
+pub async fn get_all_session_messages(project_id: String, session_id: String) -> Result<Vec<Message>, String> {
+    let projects_dir = get_projects_dir()?;
+    let session_path = projects_dir.join(&project_id).join(format!("{}.jsonl", session_id));
+
+    if !session_path.exists() {
+        return Err("Session not found".to_string());
+    }
+
+    let (entries, _) = read_session_data(&session_path).await?;
+    
+    let mut messages: Vec<Message> = Vec::new();
+    let mut tool_use_map: HashMap<String, usize> = HashMap::new(); // tool_use_id -> message index
+
+    for entry in entries {
+        // Try to parse as hook first
+        if let Some(hook_msg) = transform_hook_message(&entry) {
+            messages.push(hook_msg);
+            continue;
+        }
+
+        // We only care about user, assistant, and agent_progress for the transcript
+        if entry.entry_type != "user" && entry.entry_type != "assistant" && entry.entry_type != "agent_progress" {
+            continue;
+        }
+
+        let mut msg = transform_message(&entry);
+        
+        // Populate agentId from metadata if available
+        if entry.entry_type == "assistant" {
+           for block in &mut msg.content {
+               if block.get("type").and_then(|t| t.as_str()) == Some("tool_use") {
+                   if let Some(id) = block.get("id").and_then(|i| i.as_str()) {
+                       tool_use_map.insert(id.to_string(), messages.len());
+                       // Early check for agentId in input
+                       let subagent_id = block.get("input")
+                           .and_then(|i| i.get("subagent_type"))
+                           .and_then(|s| s.as_str())
+                           .and_then(|s| if s.contains(':') { s.split(':').nth(1).map(|id| id.to_string()) } else { None });
+
+                       if let Some(id) = subagent_id {
+                           block.as_object_mut().unwrap().insert("agentId".to_string(), Value::String(id));
+                       }
+                   }
+               }
+           }
+        } else if entry.entry_type == "user" {
+            // Check tool_result for agentIds
+            for block in &msg.content {
+                if block.get("type").and_then(|t| t.as_str()) == Some("tool_result") {
+                    if let Some(tool_use_id) = block.get("tool_use_id").and_then(|i| i.as_str()) {
+                        if let Some(&msg_idx) = tool_use_map.get(tool_use_id) {
+                            if let Some(agent_id) = extract_agent_id(block.get("content").unwrap_or(&Value::Null)) {
+                                // Link back to tool_use block
+                                for tool_block in &mut messages[msg_idx].content {
+                                    if tool_block.get("id").and_then(|i: &Value| i.as_str()) == Some(tool_use_id) {
+                                        tool_block.as_object_mut().unwrap().insert("agentId".to_string(), Value::String(agent_id.clone()));
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        } else if entry.entry_type == "agent_progress" {
+            // Convert to progress message
+            msg.msg_type = "progress".to_string();
+            if let Some(data) = entry._extra.get("data") {
+                 let prompt = data.get("prompt").and_then(|p| p.as_str()).unwrap_or("");
+                 let agent_id = data.get("agentId")
+                     .and_then(|a| a.as_str().map(|s| s.to_string()))
+                     .or_else(|| extract_agent_id(data));
+                 // parentToolUseID is at top level, not inside data
+                 let parent_id = entry._extra.get("parentToolUseID").and_then(|p| p.as_str());
+
+                 msg.content = vec![serde_json::json!({
+                     "type": "progress",
+                     "text": prompt,
+                     "agentId": agent_id,
+                 })];
+
+                 if let (Some(pid), Some(ref aid)) = (parent_id, agent_id) {
+                     if let Some(&msg_idx) = tool_use_map.get(pid) {
+                         for tool_block in &mut messages[msg_idx].content {
+                             if tool_block.get("id").and_then(|i: &Value| i.as_str()) == Some(pid) {
+                                 tool_block.as_object_mut().unwrap().insert("agentId".to_string(), Value::String(aid.clone()));
+                             }
+                         }
+                     }
+                 }
+            }
+        }
+
+        messages.push(msg);
+    }
+
+    // Sort newest first
+    messages.sort_by(|a, b| {
+        let a_ts = DateTime::parse_from_rfc3339(&a.timestamp).ok();
+        let b_ts = DateTime::parse_from_rfc3339(&b.timestamp).ok();
+        b_ts.cmp(&a_ts)
+    });
+
+    Ok(messages)
 }

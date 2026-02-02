@@ -1,9 +1,10 @@
 mod commands;
+mod docs;
 
 use commands::{
     fs_utils::*, analytics::*, history::*, transcripts::*, plans::*, files::*, mcp::*,
     skills::*, ai_chat::*, settings::*, library::*, agents::*, commands::*, plugins::*, reports::*,
-    auth::*,
+    auth::*, docs::*,
 };
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -57,6 +58,7 @@ pub fn run() {
       get_project_stats,
       delete_session,
       get_agent_transcript,
+      get_all_session_messages,
       // Plans commands
       get_plans,
       get_plan_by_id,
@@ -108,9 +110,13 @@ pub fn run() {
       // Reports commands
       generate_report,
       save_report,
+      generate_project_documentation,
       // Auth commands
       get_auth_status,
       trigger_claude_login,
+      // Documentation commands
+      generate_documentation,
+      get_documentation_prompt,
     ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");

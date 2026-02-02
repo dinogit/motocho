@@ -17,7 +17,7 @@ use std::process::Command;
 use tauri_plugin_dialog::DialogExt;
 use tokio::io::{AsyncBufReadExt, BufReader};
 
-use crate::commands::work_unit_builder::{SummaryEmitter, WorkUnitBuilder};
+// use crate::commands::work_unit_builder::{SummaryEmitter, WorkUnitBuilder};
 
 // ============================================================================
 // Type Definitions
@@ -195,7 +195,7 @@ fn package_name(cwd: &Path) -> Option<String> {
         .map(|s| s.to_string())
 }
 
-async fn read_session_entries(session_path: &Path) -> Result<Vec<RawLogEntry>, String> {
+async fn read_session_entries(session_path: &Path) -> Result<(Vec<RawLogEntry>, String), String> {
     let file = tokio::fs::File::open(session_path)
         .await
         .map_err(|e| format!("Failed to open session file: {}", e))?;
@@ -203,6 +203,7 @@ async fn read_session_entries(session_path: &Path) -> Result<Vec<RawLogEntry>, S
     let reader = BufReader::new(file);
     let mut lines = reader.lines();
     let mut entries = Vec::new();
+    let mut summary = String::new();
 
     while let Some(line) = lines
         .next_line()
@@ -212,12 +213,23 @@ async fn read_session_entries(session_path: &Path) -> Result<Vec<RawLogEntry>, S
         if line.trim().is_empty() {
             continue;
         }
+
+        // Try to parse as summary entry first
+        if let Ok(Value::Object(map)) = serde_json::from_str::<Value>(&line) {
+            if map.get("type").and_then(|v| v.as_str()) == Some("summary") {
+                if let Some(s) = map.get("summary").and_then(|v| v.as_str()) {
+                    summary = s.to_string();
+                }
+                continue;
+            }
+        }
+
         if let Ok(log_entry) = serde_json::from_str::<RawLogEntry>(&line) {
             entries.push(log_entry);
         }
     }
 
-    Ok(entries)
+    Ok((entries, summary))
 }
 
 // ============================================================================
@@ -598,28 +610,19 @@ fn type_to_category(work_type: &str) -> &'static str {
 /// Generate human-readable work summary from work groups without AI.
 /// Uses deterministic WorkUnit-based semantic classification.
 /// Produces outcome-level summaries instead of operation-level noise.
-fn generate_work_summary(groups: &[WorkGroup]) -> String {
-    // Separate file changes from other operations
-    let file_groups: Vec<WorkGroup> = groups
-        .iter()
-        .filter(|g| g.work_type == "file_created" || g.work_type == "file_modified")
-        .cloned()
-        .collect();
-
-    // Build semantic work units (outcome-level changes)
-    let work_units = WorkUnitBuilder::build(&file_groups);
-
-    // Emit summary bullets with verb control and invariants
-    let work_unit_bullets = SummaryEmitter::emit(&work_units);
-
+/// Generate human-readable work summary from work groups and session summaries.
+/// Strictly factual, lists summaries and explicit operations.
+fn generate_work_summary(groups: &[WorkGroup], session_summaries: &[String]) -> String {
     let mut result = String::from("Work completed in this period:\n");
 
-    // Add work unit bullets
-    for bullet in work_unit_bullets {
-        result.push_str(&format!("- {}\n", bullet));
+    // Add session summaries first as the primary context
+    for summary in session_summaries {
+        if !summary.is_empty() {
+            result.push_str(&format!("- {}\n", summary));
+        }
     }
 
-    // Add git operations (explicit actions, not summarized)
+    // Add git operations (explicit actions)
     let git_bullets = extract_git_bullets(groups);
     for bullet in git_bullets {
         result.push_str(&format!("- {}\n", bullet));
@@ -761,16 +764,17 @@ r#"You are given a structured list of project Work Items. Each item has:
 - edits: number of edits (optional)
 
 Your task:
-1. Produce a concise human-readable bullet list summarizing the work completed in this period.
-2. Merge multiple edits to the same file or feature into a single bullet.
-3. Convert technical actions into plain actionable statements (e.g., Modified src/commands/reports.rs → "Refactored report commands").
-4. Keep every bullet strictly supported by the given Work Items. Do not invent or hallucinate work.
-5. Start the list with: Work completed in this period:
-6. Output only the bullet list, ready to display in a report.
-7. Do not summarize full transcripts—use only the Work Items provided.
+1. Produce a concise human-readable bullet list summarizing the work completed.
+2. USE ONLY the provided session summaries and work items.
+3. DO NOT invent, infer, or group multiple unrelated changes.
+4. DO NOT rephrase technical actions into vague statements (e.g., keep file paths and commit messages as they are).
+5. If something is unclear, omit it.
+6. Start the list with: Work completed in this period:
+7. Output only the bullet list.
 
 Work Items:
-{}"#,
+{}
+"#,
                     input
                 )
             }]
@@ -840,6 +844,7 @@ pub async fn generate_report(
 
     let mut all_work_items: Vec<WorkItem> = Vec::new();
     let mut session_ids: HashSet<String> = HashSet::new();
+    let mut session_summaries: Vec<String> = Vec::new();
 
     // Extract work items from each project
     for (project_path, project_id, _) in &project_dirs {
@@ -861,8 +866,8 @@ pub async fn generate_report(
                 .unwrap_or("unknown")
                 .to_string();
 
-            let entries = match read_session_entries(&path).await {
-                Ok(e) if !e.is_empty() => e,
+            let (entries, session_summary) = match read_session_entries(&path).await {
+                Ok(data) if !data.0.is_empty() => data,
                 _ => continue,
             };
 
@@ -870,11 +875,17 @@ pub async fn generate_report(
             let items = extract_work_items(&entries, project_id, &session_id);
 
             // Filter by date range
+            let mut matched = false;
             for item in items {
                 if item.timestamp >= start_ms && item.timestamp <= end_ms {
                     session_ids.insert(item.session_id.clone());
                     all_work_items.push(item);
+                    matched = true;
                 }
+            }
+
+            if matched && !session_summary.is_empty() {
+                session_summaries.push(session_summary);
             }
         }
     }
@@ -914,7 +925,7 @@ pub async fn generate_report(
     let date_range = format!("{} to {}", start_date, end_date);
 
     // Always generate local summary first
-    let local_summary = generate_work_summary(&work_groups);
+    let local_summary = generate_work_summary(&work_groups, &session_summaries);
 
     // Try AI enhancement if requested, fall back to local summary
     let summary = if use_ai_formatting {
@@ -996,4 +1007,105 @@ pub async fn save_report(
         }
         None => Ok(false),
     }
+}
+
+/// Generate project documentation from specific session IDs.
+/// Reuses report generation logic but follows the documentation format.
+#[tauri::command]
+pub async fn generate_project_documentation(
+    project_id: String,
+    session_ids: Vec<String>,
+    use_ai: Option<bool>,
+) -> Result<ReportData, String> {
+    let use_ai_formatting = use_ai.unwrap_or(false);
+    let projects_dir = get_projects_dir()?;
+    let project_path = projects_dir.join(&project_id);
+
+    if !project_path.exists() {
+        return Err(format!("Project not found: {}", project_id));
+    }
+
+    let project_name = resolve_project_name(&project_path);
+    let mut all_work_items: Vec<WorkItem> = Vec::new();
+    let mut session_summaries: Vec<String> = Vec::new();
+
+    for session_id in &session_ids {
+        let session_path = project_path.join(format!("{}.jsonl", session_id));
+        if !session_path.exists() {
+            continue;
+        }
+
+        let (entries, session_summary) = match read_session_entries(&session_path).await {
+            Ok(data) => data,
+            Err(_) => continue,
+        };
+        let items = extract_work_items(&entries, &project_id, session_id);
+        all_work_items.extend(items);
+
+        if !session_summary.is_empty() {
+            session_summaries.push(session_summary);
+        }
+    }
+
+    let work_groups = group_work_items(all_work_items);
+    let local_summary = generate_work_summary(&work_groups, &session_summaries);
+
+    let summary = if use_ai_formatting {
+        ai_format_work_items(&work_groups, &project_name)
+            .await
+            .unwrap_or(local_summary)
+    } else {
+        local_summary
+    };
+
+    // Construct documentation-style markdown
+    let mut markdown = format!("# Project Documentation: {}\n\n", project_name);
+    markdown.push_str("## Summary\n");
+    markdown.push_str(&summary);
+    markdown.push_str("\n\n## Code Changes\n");
+    
+    let file_groups: Vec<&WorkGroup> = work_groups.iter()
+        .filter(|g| g.work_type == "file_created" || g.work_type == "file_modified")
+        .collect();
+
+    if file_groups.is_empty() {
+        markdown.push_str("No code changes detected.\n\n");
+    } else {
+        for group in file_groups {
+            let action = if group.work_type == "file_created" { "CREATED" } else { "MODIFIED" };
+            markdown.push_str(&format!("### [{}] {}\n", action, group.subject));
+            markdown.push_str(&format!("- **Activity**: {} edits across {} sessions\n", group.count, group.sessions.len()));
+            markdown.push_str("\n");
+        }
+    }
+
+    let total_files = total_files_count(&work_groups);
+    let total_commands = total_commands_count(&work_groups);
+
+    Ok(ReportData {
+        project_name: project_name.clone(),
+        date_range: format!("Across {} selected sessions", session_ids.len()),
+        work_items: work_groups,
+        markdown,
+        total_files,
+        total_commands,
+        total_sessions: session_ids.len(),
+    })
+}
+
+fn total_files_count(groups: &[WorkGroup]) -> usize {
+    groups.iter()
+        .filter(|g| g.work_type == "file_created" || g.work_type == "file_modified")
+        .count()
+}
+
+fn total_commands_count(groups: &[WorkGroup]) -> usize {
+    groups.iter()
+        .filter(|g| {
+            g.work_type.starts_with("git_")
+                || g.work_type.starts_with("npm_")
+                || g.work_type.starts_with("cargo_")
+        })
+        .map(|g| g.count)
+        .sum()
 }
