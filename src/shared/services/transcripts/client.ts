@@ -22,9 +22,27 @@ export async function getProjects(): Promise<Project[]> {
     return projects.map((p) => ({
       ...p,
       lastModified: new Date(p.lastModified),
+      source: 'code',
     }))
   } catch (error) {
     console.error('[Transcripts] Failed to get projects:', error)
+    return []
+  }
+}
+
+/**
+ * Get all Codex projects from ~/.codex/sessions/
+ */
+export async function getCodexProjects(): Promise<Project[]> {
+  try {
+    const projects = await invoke<Project[]>('get_codex_projects')
+    return projects.map((p) => ({
+      ...p,
+      lastModified: new Date(p.lastModified),
+      source: 'codex',
+    }))
+  } catch (error) {
+    console.error('[Transcripts] Failed to get Codex projects:', error)
     return []
   }
 }
@@ -38,9 +56,27 @@ export async function getProjectSessions(projectId: string): Promise<Session[]> 
     return sessions.map((s) => ({
       ...s,
       lastModified: new Date(s.lastModified),
+      source: 'code',
     }))
   } catch (error) {
     console.error('[Transcripts] Failed to get project sessions:', error)
+    return []
+  }
+}
+
+/**
+ * Get all Codex sessions for a project
+ */
+export async function getCodexProjectSessions(projectId: string): Promise<Session[]> {
+  try {
+    const sessions = await invoke<Session[]>('get_codex_project_sessions', { projectId })
+    return sessions.map((s) => ({
+      ...s,
+      lastModified: new Date(s.lastModified),
+      source: 'codex',
+    }))
+  } catch (error) {
+    console.error('[Transcripts] Failed to get Codex project sessions:', error)
     return []
   }
 }
@@ -68,6 +104,7 @@ export async function getSessionDetails(
       messageCount: details.messageCount,
       summary: details.summary,
       stats: details.stats,
+      source: 'code',
     }
 
     const pagination: PaginatedMessages = {
@@ -81,6 +118,47 @@ export async function getSessionDetails(
     return { session, pagination }
   } catch (error) {
     console.error('[Transcripts] Failed to get session details:', error)
+    return null
+  }
+}
+
+/**
+ * Get Codex session details with paginated messages
+ */
+export async function getCodexSessionDetails(
+  projectId: string,
+  sessionId: string,
+  page?: number,
+): Promise<{ session: Session; pagination: PaginatedMessages } | null> {
+  try {
+    const details = await invoke<SessionDetails>('get_codex_session_details', {
+      projectId,
+      sessionId,
+      page,
+    })
+
+    const session: Session = {
+      id: details.id,
+      projectId: details.projectId,
+      filePath: details.filePath,
+      lastModified: new Date(details.lastModified),
+      messageCount: details.messageCount,
+      summary: details.summary,
+      stats: details.stats,
+      source: 'codex',
+    }
+
+    const pagination: PaginatedMessages = {
+      messages: details.messages,
+      totalPages: details.stats?.totalPages || 1,
+      currentPage: page || 1,
+      totalMessages: details.messageCount,
+      hasMore: (page || 1) < (details.stats?.totalPages || 1),
+    }
+
+    return { session, pagination }
+  } catch (error) {
+    console.error('[Transcripts] Failed to get Codex session details:', error)
     return null
   }
 }
@@ -101,6 +179,26 @@ export async function getSessionPaginated(
     })
   } catch (error) {
     console.error('[Transcripts] Failed to paginated messages:', error)
+    return null
+  }
+}
+
+/**
+ * Get Codex paginated messages for a session
+ */
+export async function getCodexSessionPaginated(
+  projectId: string,
+  sessionId: string,
+  page?: number,
+): Promise<PaginatedMessages | null> {
+  try {
+    return await invoke<PaginatedMessages>('get_codex_session_paginated', {
+      projectId,
+      sessionId,
+      page,
+    })
+  } catch (error) {
+    console.error('[Transcripts] Failed to get Codex paginated messages:', error)
     return null
   }
 }
@@ -177,6 +275,24 @@ export async function getAllSessionMessages(
 }
 
 /**
+ * Get all Codex messages for a session (no pagination)
+ */
+export async function getCodexAllSessionMessages(
+  projectId: string,
+  sessionId: string,
+): Promise<Message[]> {
+  try {
+    return await invoke<Message[]>('get_codex_all_session_messages', {
+      projectId,
+      sessionId,
+    })
+  } catch (error) {
+    console.error('[Transcripts] Failed to get all Codex session messages:', error)
+    return []
+  }
+}
+
+/**
  * Generate project documentation (legacy - uses reports.rs)
  */
 export async function generateProjectDocumentation(projectId: string, sessionIds: string[], useAi: boolean = false): Promise<any> {
@@ -220,12 +336,16 @@ export async function generateDocumentation(
   sessionIds: string[],
   useAi: boolean = true,
   audience: DocAudience = 'engineer',
-  customPrompt?: string
+  customPrompt?: string,
+  projectPath?: string,
+  sessionSources?: Array<'code' | 'codex'>
 ): Promise<DocumentationResult> {
   try {
     return await invoke<DocumentationResult>('generate_documentation', {
       projectId,
+      projectPath,
       sessionIds,
+      sessionSources,
       useAi,
       audience,
       customPrompt,
@@ -242,12 +362,16 @@ export async function generateDocumentation(
 export async function getDocumentationPrompt(
   projectId: string,
   sessionIds: string[],
-  audience: DocAudience = 'engineer'
+  audience: DocAudience = 'engineer',
+  projectPath?: string,
+  sessionSources?: Array<'code' | 'codex'>
 ): Promise<string> {
   try {
     return await invoke<string>('get_documentation_prompt', {
       projectId,
+      projectPath,
       sessionIds,
+      sessionSources,
       audience,
     })
   } catch (error) {

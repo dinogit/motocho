@@ -8,6 +8,7 @@ interface SessionListProps {
   mode?: SessionListMode
   selectedSessionIds?: string[]
   onToggleSelection?: (sessionId: string) => void
+  source?: 'code' | 'codex'
 }
 
 export function SessionList({
@@ -15,7 +16,8 @@ export function SessionList({
   projectId,
   mode = 'presentation',
   selectedSessionIds = [],
-  onToggleSelection
+  onToggleSelection,
+  source,
 }: SessionListProps) {
   if (sessions.length === 0) {
     return (
@@ -37,6 +39,7 @@ export function SessionList({
           mode={mode}
           isSelected={selectedSessionIds.includes(session.id)}
           onSelect={() => onToggleSelection?.(session.id)}
+          source={session.source || source}
         />
       ))}
     </div>

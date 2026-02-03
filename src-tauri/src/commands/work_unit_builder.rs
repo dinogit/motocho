@@ -347,16 +347,22 @@ impl WorkUnitBuilder {
         units
     }
 
-    /// Merge units with identical responsibility + change_type
-    fn merge_units(mut units: Vec<WorkUnit>) -> Vec<WorkUnit> {
-        let mut merged: HashMap<(Responsibility, ChangeType), WorkUnit> = HashMap::new();
+    /// Merge units with identical responsibility + change_type + primary scope
+    fn merge_units(units: Vec<WorkUnit>) -> Vec<WorkUnit> {
+        let mut merged: HashMap<(Responsibility, ChangeType, String), WorkUnit> = HashMap::new();
 
         for unit in units {
             if unit.responsibilities.is_empty() {
                 continue;
             }
 
-            let key = (unit.responsibilities[0], unit.change_type);
+            let mut scope_key = String::new();
+            if !unit.scopes.is_empty() {
+                let mut scopes: Vec<String> = unit.scopes.iter().cloned().collect();
+                scopes.sort();
+                scope_key = scopes[0].clone();
+            }
+            let key = (unit.responsibilities[0], unit.change_type, scope_key.clone());
 
             merged
                 .entry(key)
@@ -365,7 +371,11 @@ impl WorkUnitBuilder {
                     existing.first_timestamp = existing.first_timestamp.min(unit.first_timestamp);
                     existing.last_timestamp = existing.last_timestamp.max(unit.last_timestamp);
                     existing.session_ids.extend(unit.session_ids.clone());
-                    existing.scopes.extend(unit.scopes.clone());
+                    if !scope_key.is_empty() {
+                        existing.scopes.insert(scope_key.clone());
+                    } else {
+                        existing.scopes.extend(unit.scopes.clone());
+                    }
                 })
                 .or_insert(unit);
         }
@@ -385,17 +395,42 @@ fn extract_scopes(path: &str, scopes: &mut HashSet<String>) {
         scopes.insert("US".to_string());
     }
 
-    // Extract directory names as feature scopes
     let parts: Vec<&str> = path.split('/').collect();
+    let denylist = [
+        "src", "components", "shared", "lib", "utils", "hooks", "context", "contexts",
+        "types", "styles", "assets", "app", "pages", "components", "providers",
+    ];
+
+    let mut add_scope = |scope: &str| {
+        if scope.is_empty() || scope.contains('.') || denylist.contains(&scope) {
+            return;
+        }
+        scopes.insert(scope.to_string());
+    };
+
+    // Prefer explicit feature roots
+    for i in 0..parts.len() {
+        let part = parts[i];
+        if part == "features" || part == "routes" {
+            if let Some(next) = parts.get(i + 1) {
+                add_scope(next);
+                return;
+            }
+        }
+    }
+
+    // Named areas that are meaningful on their own
+    for area in ["transcripts", "history", "reports", "docs", "plans", "services"] {
+        if parts.iter().any(|p| *p == area) {
+            add_scope(area);
+            return;
+        }
+    }
+
+    // Fallback: use the nearest non-generic directory
     if parts.len() >= 2 {
         if let Some(feature) = parts.get(parts.len() - 2) {
-            if !feature.is_empty()
-                && !feature.starts_with("src")
-                && !feature.starts_with("components")
-                && !feature.contains(".")
-            {
-                scopes.insert(feature.to_string());
-            }
+            add_scope(feature);
         }
     }
 }

@@ -2,7 +2,7 @@ mod commands;
 mod docs;
 
 use commands::{
-    fs_utils::*, analytics::*, history::*, transcripts::*, plans::*, files::*, mcp::*,
+    fs_utils::*, analytics::*, analytics_v2::*, history::*, transcripts::*, plans::*, files::*, mcp::*,
     skills::*, ai_chat::*, settings::*, library::*, agents::*, commands::*, plugins::*, reports::*,
     auth::*, docs::*,
 };
@@ -45,20 +45,30 @@ pub fn run() {
       // Analytics commands
       get_analytics_data,
       get_analytics_summary,
+      get_analytics_v2,
       // History commands
       get_history,
+      get_codex_history,
       search_history,
+      search_codex_history,
       get_history_stats,
+      get_codex_history_stats,
       get_history_projects,
+      get_codex_history_projects,
       // Transcripts commands
       get_projects,
+      get_codex_projects,
       get_project_sessions,
+      get_codex_project_sessions,
       get_session_details,
+      get_codex_session_details,
       get_session_paginated,
+      get_codex_session_paginated,
       get_project_stats,
       delete_session,
       get_agent_transcript,
       get_all_session_messages,
+      get_codex_all_session_messages,
       // Plans commands
       get_plans,
       get_plan_by_id,

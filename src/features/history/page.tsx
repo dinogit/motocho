@@ -4,10 +4,11 @@ import { SearchInput } from './components/search-input'
 import { ProjectFilter } from './components/project-filter'
 import { SearchResultItem } from './components/search-result-item'
 import { StatsBar } from './components/stats-bar'
+import { SourceFilter } from './components/source-filter'
 const checkServerStatus: any = () => Promise.resolve()
 const toggleMcpServer: any = () => Promise.resolve()
 const copyMcpToProject: any = () => Promise.resolve()
-import { searchHistory } from '@/shared/services/history/client'
+import { searchCodexHistory, searchHistory } from '@/shared/services/history/client'
 import type { SearchResult } from '@/shared/types/history'
 import {
   PageHeader,
@@ -21,6 +22,7 @@ export function Page() {
 
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedProject, setSelectedProject] = useState('all')
+  const [selectedSource, setSelectedSource] = useState<'all' | 'code' | 'codex'>('all')
   const [results, setResults] = useState<SearchResult[]>(initialResults)
   const [isSearching, setIsSearching] = useState(false)
 
@@ -29,18 +31,36 @@ export function Page() {
   selectedProjectRef.current = selectedProject
   const searchQueryRef = useRef(searchQuery)
   searchQueryRef.current = searchQuery
+  const selectedSourceRef = useRef(selectedSource)
+  selectedSourceRef.current = selectedSource
 
   const handleSearch = useCallback(async (query: string) => {
     setSearchQuery(query)
     setIsSearching(true)
 
     try {
-      const searchResults = await searchHistory(
-        query,
-        selectedProjectRef.current === 'all' ? undefined : selectedProjectRef.current,
-        100,
+      const [codeResults, codexResults] = await Promise.all([
+        searchHistory(
+          query,
+          selectedProjectRef.current === 'all' ? undefined : selectedProjectRef.current,
+          100,
+        ),
+        searchCodexHistory(
+          query,
+          selectedProjectRef.current === 'all' ? undefined : selectedProjectRef.current,
+          100,
+        ),
+      ])
+
+      const merged = [...codeResults, ...codexResults].sort(
+        (a, b) => b.entry.timestamp - a.entry.timestamp
       )
-      setResults(searchResults)
+
+      const filtered = selectedSourceRef.current === 'all'
+        ? merged
+        : merged.filter(r => r.entry.source === selectedSourceRef.current)
+
+      setResults(filtered)
     } finally {
       setIsSearching(false)
     }
@@ -51,18 +71,66 @@ export function Page() {
     setIsSearching(true)
 
     try {
-      const searchResults = await searchHistory(
-        searchQueryRef.current,
-        project === 'all' ? undefined : project,
-        100,
+      const [codeResults, codexResults] = await Promise.all([
+        searchHistory(
+          searchQueryRef.current,
+          project === 'all' ? undefined : project,
+          100,
+        ),
+        searchCodexHistory(
+          searchQueryRef.current,
+          project === 'all' ? undefined : project,
+          100,
+        ),
+      ])
+
+      const merged = [...codeResults, ...codexResults].sort(
+        (a, b) => b.entry.timestamp - a.entry.timestamp
       )
-      setResults(searchResults)
+
+      const filtered = selectedSourceRef.current === 'all'
+        ? merged
+        : merged.filter(r => r.entry.source === selectedSourceRef.current)
+
+      setResults(filtered)
     } finally {
       setIsSearching(false)
     }
   }, [])
 
-  const isFiltered = searchQuery.trim() !== '' || selectedProject !== 'all'
+  const handleSourceChange = useCallback(async (source: 'all' | 'code' | 'codex') => {
+    setSelectedSource(source)
+    setIsSearching(true)
+
+    try {
+      const [codeResults, codexResults] = await Promise.all([
+        searchHistory(
+          searchQueryRef.current,
+          selectedProjectRef.current === 'all' ? undefined : selectedProjectRef.current,
+          100,
+        ),
+        searchCodexHistory(
+          searchQueryRef.current,
+          selectedProjectRef.current === 'all' ? undefined : selectedProjectRef.current,
+          100,
+        ),
+      ])
+
+      const merged = [...codeResults, ...codexResults].sort(
+        (a, b) => b.entry.timestamp - a.entry.timestamp
+      )
+
+      const filtered = source === 'all'
+        ? merged
+        : merged.filter(r => r.entry.source === source)
+
+      setResults(filtered)
+    } finally {
+      setIsSearching(false)
+    }
+  }, [])
+
+  const isFiltered = searchQuery.trim() !== '' || selectedProject !== 'all' || selectedSource !== 'all'
 
   return (
     <>
@@ -95,6 +163,10 @@ export function Page() {
             projects={projects}
             value={selectedProject}
             onChange={handleProjectChange}
+          />
+          <SourceFilter
+            value={selectedSource}
+            onChange={(value) => handleSourceChange(value as 'all' | 'code' | 'codex')}
           />
         </div>
 

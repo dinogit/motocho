@@ -1,6 +1,7 @@
 import { Link } from '@tanstack/react-router'
 import { Clock, FolderOpen, ArrowRight } from 'lucide-react'
 import { Card, CardContent } from '@/shared/components/ui/card'
+import { Badge } from '@/shared/components/ui/badge'
 import type { SearchResult } from '@/shared/types/history'
 
 interface SearchResultItemProps {
@@ -12,7 +13,26 @@ export function SearchResultItem({ result, query }: SearchResultItemProps) {
   const { entry, projectName, formattedDate, formattedTime } = result
 
   // Encode project path for URL (replace / with -)
-  const encodedProject = entry.project.replace(/\//g, '-')
+  const encodeCodexProjectId = (path: string) =>
+    path
+      .split('')
+      .map((ch) => {
+        const code = ch.charCodeAt(0)
+        if (
+          (code >= 48 && code <= 57) ||
+          (code >= 65 && code <= 90) ||
+          (code >= 97 && code <= 122) ||
+          ch === '.' || ch === '_' || ch === '-'
+        ) {
+          return ch
+        }
+        return `~${code.toString(16).toUpperCase().padStart(2, '0')}`
+      })
+      .join('')
+
+  const encodedProject = entry.source === 'codex'
+    ? encodeCodexProjectId(entry.project)
+    : entry.project.replace(/\//g, '-')
 
   // Highlight matching text
   const highlightText = (text: string, search?: string) => {
@@ -41,7 +61,7 @@ export function SearchResultItem({ result, query }: SearchResultItemProps) {
         projectId: encodedProject,
         sessionId: entry.sessionId,
       }}
-      search={{ page: 1 }}
+      search={{ page: 1, source: entry.source }}
       className="block group"
     >
       <Card className="transition-all hover:bg-muted/50 hover:border-primary/30">
@@ -58,6 +78,9 @@ export function SearchResultItem({ result, query }: SearchResultItemProps) {
                 <FolderOpen className="h-3 w-3" />
                 {projectName}
               </span>
+              <Badge variant="outline" className="text-[10px] py-0">
+                {entry.source === 'codex' ? 'Codex' : 'Code'}
+              </Badge>
               <span className="flex items-center gap-1">
                 <Clock className="h-3 w-3" />
                 {formattedDate} · {formattedTime}

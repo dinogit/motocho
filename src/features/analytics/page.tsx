@@ -1,12 +1,12 @@
 import { useLoaderData } from '@tanstack/react-router'
 import { Card, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui/card'
 import { MessageSquare, Coins, Calendar, Wrench } from 'lucide-react'
-import type { StatsCache, AnalyticsSummary } from '@/shared/types/analytics'
+import type { AnalyticsV2 } from '@/shared/types/analytics-v2'
 import { SummaryCard } from './components/summary-card'
-import { DailyActivityChart } from './components/daily-activity-chart'
-import { HourlyActivityChart } from './components/hourly-activity-chart'
-import { TokensChart } from './components/tokens-chart'
-import { ModelUsageCard } from './components/model-usage-card'
+import { DailyActivityChart } from './components/v2/daily-activity-chart'
+import { HourlyActivityChart } from './components/v2/hourly-activity-chart'
+import { TokensChart } from './components/v2/tokens-chart'
+import { ModelUsageCard } from './components/v2/model-usage-card'
 import {
     PageHeader,
     PageHeaderContent,
@@ -15,12 +15,11 @@ import {
 } from '@/shared/components/page/page-header'
 
 export function Page() {
-  const { stats, summary } = useLoaderData({ from: '/analytics' }) as {
-    stats: StatsCache | null
-    summary: AnalyticsSummary | null
+  const { analytics } = useLoaderData({ from: '/analytics' }) as {
+    analytics: AnalyticsV2 | null
   }
 
-  if (!stats || !summary || !summary.totalSessions || summary.totalSessions === 0) {
+  if (!analytics || !analytics.summary || !analytics.summary.totalSessions || analytics.summary.totalSessions === 0) {
     return (
       <>
         <PageHeader>
@@ -33,7 +32,7 @@ export function Page() {
             <CardHeader>
               <CardTitle>No Analytics Data</CardTitle>
               <CardDescription>
-                We couldn't find any Claude Code sessions to analyze. Start some conversations with Claude Code to see your stats here!
+                We couldn't find any sessions to analyze. Start some conversations to see your stats here!
               </CardDescription>
             </CardHeader>
           </Card>
@@ -42,6 +41,7 @@ export function Page() {
     )
   }
 
+  const summary = analytics.summary
   const firstDate = summary.firstSessionDate ? new Date(summary.firstSessionDate) : new Date()
 
   return (
@@ -51,7 +51,7 @@ export function Page() {
             <PageTitle>Analytics</PageTitle>
             <PageHeaderSeparator  />
             <PageDescription>
-                Your Claude Code usage since {firstDate.toLocaleDateString()}
+                Your usage since {firstDate.toLocaleDateString()}
             </PageDescription>
         </PageHeaderContent>
       </PageHeader>
@@ -74,7 +74,7 @@ export function Page() {
         <SummaryCard
           title="Tool Calls"
           value={(summary.totalToolCalls || 0).toLocaleString()}
-          description="Bash, Edit, Read, etc."
+          description="Across all sessions"
           icon={Wrench}
         />
         <SummaryCard
@@ -87,14 +87,14 @@ export function Page() {
 
       {/* Charts Row */}
       <div className="grid gap-6 lg:grid-cols-2">
-        <DailyActivityChart data={stats.dailyActivity} />
-        <HourlyActivityChart data={stats.hourCounts} />
+        <DailyActivityChart data={analytics.dailyActivity} />
+        <HourlyActivityChart data={analytics.hourlyActivity} />
       </div>
 
       {/* Token Usage */}
       <div className="grid gap-6 lg:grid-cols-2">
-        <TokensChart data={stats.dailyModelTokens} />
-        <ModelUsageCard data={stats.modelUsage} />
+        <TokensChart data={analytics.dailyTokens} />
+        <ModelUsageCard data={analytics.modelUsage} />
       </div>
       </div>
     </>

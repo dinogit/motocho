@@ -11,6 +11,7 @@ interface Project {
   path: string
   name: string
   count: number
+  source?: 'code' | 'codex'
 }
 
 interface ProjectFilterProps {
@@ -31,7 +32,12 @@ export function ProjectFilter({ projects, value, onChange }: ProjectFilterProps)
         {projects.map((project) => (
           <SelectItem key={project.path} value={project.path}>
             <span className="flex items-center justify-between gap-2 w-full">
-              <span className="truncate">{project.name}</span>
+              <span className="truncate flex items-center gap-2">
+                {project.name}
+                <span className="text-[10px] uppercase text-muted-foreground">
+                  {project.source === 'codex' ? 'Codex' : 'Code'}
+                </span>
+              </span>
               <span className="text-xs text-muted-foreground">{project.count}</span>
             </span>
           </SelectItem>

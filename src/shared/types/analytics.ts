@@ -17,6 +17,7 @@ export interface ModelUsage {
   outputTokens: number
   cacheReadInputTokens: number
   cacheCreationInputTokens: number
+  messageCount?: number
   webSearchRequests: number
   costUSD: number
   contextWindow: number
@@ -40,6 +41,7 @@ export interface StatsCache {
   longestSession: LongestSession
   firstSessionDate: string
   hourCounts: Record<string, number>
+  hourCountsBySource?: Record<string, Record<string, number>>
 }
 
 // Computed analytics for display

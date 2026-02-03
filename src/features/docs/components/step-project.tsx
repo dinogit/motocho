@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react'
 import { FolderOpen } from 'lucide-react'
-import { getProjects } from '@/shared/services/transcripts/client'
+import { getCodexProjects, getProjects } from '@/shared/services/transcripts/client'
 import { useDocs } from '../context/docs-context'
 import {
     Select,
@@ -19,7 +19,26 @@ export function StepProject() {
     useEffect(() => {
         async function loadProjects() {
             try {
-                const data = await getProjects()
+                const [code, codex] = await Promise.all([getProjects(), getCodexProjects()])
+
+                const byPath = new Map<string, any>()
+                for (const p of [...code, ...codex]) {
+                    const existing = byPath.get(p.path)
+                    if (!existing) {
+                        byPath.set(p.path, { ...p })
+                    } else {
+                        byPath.set(p.path, {
+                            ...existing,
+                            sessionCount: (existing.sessionCount || 0) + (p.sessionCount || 0),
+                            lastModified: new Date(Math.max(Number(existing.lastModified), Number(p.lastModified))),
+                            source: existing.source && existing.source !== p.source ? 'both' : existing.source,
+                        })
+                    }
+                }
+
+                const data = Array.from(byPath.values()).sort(
+                    (a, b) => Number(b.lastModified) - Number(a.lastModified)
+                )
                 dispatch({ type: 'SET_PROJECTS', payload: data })
             } catch (error) {
                 console.error('Failed to load projects:', error)
@@ -55,7 +74,12 @@ export function StepProject() {
                     {projects.map((p) => (
                         <SelectItem key={p.id} value={p.id}>
                             <div className="flex flex-row justify-between w-full space-x-4 items-center">
-                                <span>{p.displayName}</span>
+                                <span className="flex items-center gap-2">
+                                    {p.displayName}
+                                    <span className="text-[10px] uppercase text-muted-foreground">
+                                        {p.source === 'both' ? 'Code + Codex' : p.source === 'codex' ? 'Codex' : 'Code'}
+                                    </span>
+                                </span>
                                 <span className="text-xs text-muted-foreground">{p.sessionCount} sessions</span>
                             </div>
                         </SelectItem>

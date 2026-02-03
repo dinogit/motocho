@@ -1,15 +1,12 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { invoke } from '@tauri-apps/api/core'
 import { Page } from '@/features/analytics/page'
-import type { StatsCache, AnalyticsSummary } from '@/shared/types/analytics'
+import type { AnalyticsV2 } from '@/shared/types/analytics-v2'
 
 export const Route = createFileRoute('/analytics')({
   loader: async () => {
-    const [stats, summary] = await Promise.all([
-      invoke<StatsCache>('get_analytics_data'),
-      invoke<AnalyticsSummary>('get_analytics_summary'),
-    ])
-    return { stats, summary }
+    const analytics = await invoke<AnalyticsV2>('get_analytics_v2')
+    return { analytics }
   },
   component: Page,
 })

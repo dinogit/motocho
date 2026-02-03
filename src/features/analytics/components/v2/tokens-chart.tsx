@@ -1,33 +1,33 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui/card'
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/shared/components/ui/chart'
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from 'recharts'
-import { TrendingUp } from 'lucide-react'
-import type { StatsCache } from '@/shared/types/analytics'
+import { Zap } from 'lucide-react'
+import type { DailyTokensV2 } from '@/shared/types/analytics-v2'
 
 const chartConfig: ChartConfig = {
-  messages: { label: 'Messages', color: 'hsl(var(--chart-1))' },
-  toolCalls: { label: 'Tool Calls', color: 'hsl(var(--chart-2))' },
+  code: { label: 'Code', color: 'hsl(var(--chart-2))' },
+  codex: { label: 'Codex', color: 'hsl(var(--chart-4))' },
 }
 
-interface DailyActivityChartProps {
-  data: StatsCache['dailyActivity']
+interface TokensChartProps {
+  data: DailyTokensV2[]
 }
 
-export function DailyActivityChart({ data }: DailyActivityChartProps) {
+export function TokensChart({ data }: TokensChartProps) {
   const chartData = data.map((d) => ({
     date: new Date(d.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-    messages: d.messageCount,
-    toolCalls: d.toolCallCount,
+    code: d.tokensBySource?.code ?? 0,
+    codex: d.tokensBySource?.codex ?? 0,
   }))
 
   return (
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <TrendingUp className="h-4 w-4" />
-          Daily Activity (Code + Codex)
+          <Zap className="h-4 w-4" />
+          Daily Token Usage
         </CardTitle>
-        <CardDescription>Messages and tool calls per day across all agents</CardDescription>
+        <CardDescription>Tokens consumed per day by source</CardDescription>
       </CardHeader>
       <CardContent>
         <ChartContainer config={chartConfig} className="h-[300px] w-full">
@@ -40,22 +40,32 @@ export function DailyActivityChart({ data }: DailyActivityChartProps) {
               tickMargin={8}
               fontSize={12}
             />
-            <YAxis tickLine={false} axisLine={false} tickMargin={8} fontSize={12} />
-            <ChartTooltip content={<ChartTooltipContent />} />
+            <YAxis
+              tickLine={false}
+              axisLine={false}
+              tickMargin={8}
+              fontSize={12}
+              tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`}
+            />
+            <ChartTooltip
+              content={<ChartTooltipContent formatter={(value) => `${Number(value).toLocaleString()} tokens`} />}
+            />
             <Area
               type="monotone"
-              dataKey="messages"
-              stroke="var(--chart-1)"
-              fill="var(--chart-1)"
+              dataKey="code"
+              stackId="tokens"
+              stroke="var(--chart-2)"
+              fill="var(--chart-2)"
               fillOpacity={0.3}
               strokeWidth={2}
             />
             <Area
               type="monotone"
-              dataKey="toolCalls"
-              stroke="var(--chart-5)"
-              fill="var(--chart-5)"
-              fillOpacity={0.3}
+              dataKey="codex"
+              stackId="tokens"
+              stroke="var(--chart-4)"
+              fill="var(--chart-4)"
+              fillOpacity={0.25}
               strokeWidth={2}
             />
           </AreaChart>

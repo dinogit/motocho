@@ -2,6 +2,7 @@ import { Link } from '@tanstack/react-router'
 import { formatDistanceToNow } from 'date-fns'
 import { Clock, FileCode, MessageSquare, Terminal } from 'lucide-react'
 import { Card, CardHeader, CardTitle, CardContent } from '@/shared/components/ui/card'
+import { Badge } from '@/shared/components/ui/badge'
 import { Checkbox } from '@/shared/components/ui/checkbox'
 import { cn } from '@/shared/lib/utils'
 import type { Session } from '@/shared/types/transcripts'
@@ -14,6 +15,7 @@ interface SessionListItemProps {
   mode?: SessionListMode
   isSelected?: boolean
   onSelect?: () => void
+  source?: 'code' | 'codex'
 }
 
 export function SessionListItem({
@@ -22,8 +24,24 @@ export function SessionListItem({
   mode = 'presentation',
   isSelected = false,
   onSelect,
+  source,
 }: SessionListItemProps) {
   const isSelectable = mode === 'selectable'
+  const sourceLabel = source === 'codex' ? 'Codex' : 'Code'
+  const routeProjectId = session.projectId || projectId
+  const codexTools = [
+    'shell_command',
+    'apply_patch',
+    'view_image',
+    'request_user_input',
+    'update_plan',
+    'list_mcp_resources',
+    'list_mcp_resource_templates',
+    'read_mcp_resource',
+    'multi_tool_use.parallel',
+  ]
+  const toolBreakdown = session.stats?.toolBreakdown ?? {}
+  const showCodexTools = source === 'codex'
 
   const handleCardClick = (e: React.MouseEvent) => {
     if (isSelectable && onSelect) {
@@ -39,15 +57,22 @@ export function SessionListItem({
         isSelectable ? "cursor-pointer" : "",
         isSelectable && isSelected
           ? "border-chart-1 bg-chart-1/5"
-          : "border-transparent hover:bg-muted/50"
+          : "border-muted hover:bg-muted/50"
       )}
       onClick={handleCardClick}
     >
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between gap-2">
-          <CardTitle className="text-sm text-chart-1 font-medium leading-snug line-clamp-2 flex-1">
-            {session.summary || (session.id.startsWith('agent-') ? 'Agent Session' : 'Untitled Session')}
-          </CardTitle>
+          <div className="flex flex-col gap-2 flex-1">
+            <CardTitle className="text-sm text-chart-1 font-medium leading-snug line-clamp-2">
+              {session.summary || (session.id.startsWith('agent-') ? 'Agent Session' : 'Untitled Session')}
+            </CardTitle>
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="text-[10px] py-0">
+                {sourceLabel}
+              </Badge>
+            </div>
+          </div>
           {isSelectable && (
             <Checkbox
               checked={isSelected}
@@ -104,8 +129,8 @@ export function SessionListItem({
     return (
       <Link
         to="/transcripts/$projectId/$sessionId"
-        params={{ projectId, sessionId: session.id }}
-        search={{ page: 1 }}
+        params={{ projectId: routeProjectId, sessionId: session.id }}
+        search={{ page: 1, source: source || 'code' }}
         className="block h-full"
       >
         {cardContent}

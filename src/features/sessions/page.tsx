@@ -9,14 +9,15 @@ import {
   PageTitle,
   PageDescription, PageHeaderSeparator,
 } from '@/shared/components/page/page-header'
-import { deleteSession, getSessionDetails } from '@/shared/services/transcripts/client'
+import { deleteSession, getCodexSessionDetails, getSessionDetails } from '@/shared/services/transcripts/client'
 const getUsageInfo: any = () => Promise.resolve() // Added this mock function based on the instruction's usage
 
 export function Page() {
   const data = useLoaderData({ from: '/transcripts/$projectId/$sessionId', structuralSharing: false }) as any
   const { projectId, sessionId } = Route.useParams()
   const navigate = useNavigate()
-  const searchParams = Route.useSearch() as { page?: number }
+  const searchParams = Route.useSearch() as { page?: number; source?: 'code' | 'codex' }
+  const source = searchParams.source === 'codex' ? 'codex' : 'code'
 
   const [isRefreshing, setIsRefreshing] = useState(false)
 
@@ -27,7 +28,11 @@ export function Page() {
   // Manual refresh handler
   const handleRefresh = async () => {
     setIsRefreshing(true)
-    const updatedData = await getSessionDetails(projectId, sessionId, searchParams.page)
+    if (source === 'codex') {
+      await getCodexSessionDetails(projectId, sessionId, searchParams.page)
+    } else {
+      await getSessionDetails(projectId, sessionId, searchParams.page)
+    }
     setIsRefreshing(false)
   }
 
@@ -40,9 +45,11 @@ export function Page() {
   }
 
   const handleDelete = async () => {
-    const success = await deleteSession(projectId, sessionId)
-    if (success) {
-      navigate({ to: '/transcripts/$projectId', params: { projectId } })
+    if (source !== 'codex') {
+      const success = await deleteSession(projectId, sessionId)
+      if (success) {
+        navigate({ to: '/transcripts/$projectId', params: { projectId }, search: { source } })
+      }
     }
   }
 
@@ -50,7 +57,7 @@ export function Page() {
     navigate({
       to: '/transcripts/$projectId/$sessionId',
       params: { projectId, sessionId: data.session.id },
-      search: { page },
+      search: { page, source },
     })
   }
 
@@ -77,7 +84,7 @@ export function Page() {
           pagination={data.pagination}
           onPageChange={handlePageChange}
           onAsk={handleAsk}
-          onDelete={handleDelete}
+          onDelete={source === 'codex' ? undefined : handleDelete}
           onRefresh={handleRefresh}
         />
       </div>

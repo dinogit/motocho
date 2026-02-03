@@ -6,6 +6,7 @@ export interface HistoryEntry {
   timestamp: number
   project: string
   sessionId: string
+  source: 'code' | 'codex'
 }
 
 export interface SearchResult {
@@ -29,4 +30,11 @@ export interface HistoryStats {
     first: Date
     last: Date
   }
+}
+
+export interface HistoryProjectInfo {
+  path: string
+  name: string
+  count: number
+  source: 'code' | 'codex'
 }

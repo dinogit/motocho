@@ -17,6 +17,7 @@ import {
 import { Icon } from "@iconify/react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card"
 import { Button } from "@/shared/components/ui/button"
+import { Badge } from "@/shared/components/ui/badge"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -126,6 +127,7 @@ export function SessionCard({
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const stats = session.stats
+  const sourceLabel = session.source === 'codex' ? 'Codex' : 'Code'
 
   const handleRefresh = async () => {
     setIsRefreshing(true)
@@ -144,6 +146,9 @@ export function SessionCard({
       <CardHeader className="pb-3 flex flex-row items-start justify-between space-y-0">
         <CardTitle className="text-xl font-semibold text-foreground leading-tight pr-4 flex items-center gap-3">
           {session.summary}
+          <Badge variant="outline" className="bg-muted/40 text-foreground">
+            {sourceLabel}
+          </Badge>
         </CardTitle>
         <div className="flex items-center gap-1">
           {onRefresh && (

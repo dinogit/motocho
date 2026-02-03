@@ -258,6 +258,27 @@ fn get_projects_dir() -> Result<PathBuf, String> {
     Ok(home_dir.join(".claude").join("projects"))
 }
 
+fn get_codex_sessions_dir() -> Result<PathBuf, String> {
+    let home_dir = dirs::home_dir().ok_or_else(|| "Could not determine home directory".to_string())?;
+    Ok(home_dir.join(".codex").join("sessions"))
+}
+
+fn encode_project_id(path: &str) -> String {
+    let mut out = String::with_capacity(path.len());
+    for b in path.as_bytes() {
+        match b {
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'.' | b'_' | b'-' => {
+                out.push(*b as char);
+            }
+            _ => {
+                out.push('~');
+                out.push_str(&format!("{:02X}", b));
+            }
+        }
+    }
+    out
+}
+
 fn parse_project_id(path: &Path) -> String {
     path.file_name()
         .and_then(|n| n.to_str())
@@ -397,6 +418,344 @@ fn package_name(cwd: &Path) -> Option<String> {
         .and_then(|v| v.as_str())
         .filter(|s| !s.is_empty())
         .map(|s| s.to_string())
+}
+
+// ============================================================================
+// Codex Session Parsing
+// ============================================================================
+
+#[derive(Debug, Clone)]
+struct CodexSessionMeta {
+    id: Option<String>,
+    cwd: Option<String>,
+    timestamp: Option<String>,
+    git_branch: Option<String>,
+}
+
+fn list_codex_session_files(root: &Path) -> Vec<PathBuf> {
+    let mut files = Vec::new();
+    let Ok(entries) = fs::read_dir(root) else { return files };
+
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.is_dir() {
+            files.extend(list_codex_session_files(&path));
+        } else if path.extension().map(|e| e == "jsonl").unwrap_or(false) {
+            files.push(path);
+        }
+    }
+
+    files
+}
+
+fn resolve_project_name_from_cwd(cwd: &str) -> String {
+    let path = PathBuf::from(cwd);
+    if let Some(name) = git_repo_name(&path) {
+        return name;
+    }
+    if let Some(name) = package_name(&path) {
+        return name;
+    }
+    path.file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("unknown")
+        .to_string()
+}
+
+fn read_codex_session_meta(session_path: &Path) -> Result<CodexSessionMeta, String> {
+    let file = fs::File::open(session_path)
+        .map_err(|e| format!("Failed to open session file: {}", e))?;
+    let reader = std::io::BufReader::new(file);
+    use std::io::BufRead;
+
+    for line in reader.lines().flatten() {
+        if line.trim().is_empty() {
+            continue;
+        }
+        if let Ok(value) = serde_json::from_str::<Value>(&line) {
+            if value.get("type").and_then(|v| v.as_str()) == Some("session_meta") {
+                let payload = value.get("payload").cloned().unwrap_or(Value::Null);
+                let id = payload.get("id").and_then(|v| v.as_str()).map(|s| s.to_string());
+                let cwd = payload.get("cwd").and_then(|v| v.as_str()).map(|s| s.to_string());
+                let timestamp = payload.get("timestamp").and_then(|v| v.as_str()).map(|s| s.to_string());
+                let git_branch = payload
+                    .get("git")
+                    .and_then(|g| g.get("branch"))
+                    .and_then(|v| v.as_str())
+                    .map(|s| s.to_string());
+                return Ok(CodexSessionMeta { id, cwd, timestamp, git_branch });
+            }
+        }
+    }
+
+    Ok(CodexSessionMeta {
+        id: None,
+        cwd: None,
+        timestamp: None,
+        git_branch: None,
+    })
+}
+
+fn codex_text_blocks_from_content(role: &str, content: &Value) -> Vec<Value> {
+    let mut blocks = Vec::new();
+
+    if let Value::Array(arr) = content {
+        for item in arr {
+            let item_type = item.get("type").and_then(|v| v.as_str()).unwrap_or("");
+            let text = item.get("text").and_then(|v| v.as_str()).unwrap_or("");
+            if item_type == "input_text" || item_type == "output_text" {
+                let mut text_value = text.to_string();
+                if role == "developer" {
+                    text_value = format!("[developer] {}", text_value);
+                }
+                blocks.push(serde_json::json!({ "type": "text", "text": text_value }));
+            }
+        }
+    }
+
+    blocks
+}
+
+fn codex_tool_use_block(name: &str, call_id: &str, args: Option<&str>) -> Value {
+    let input = args
+        .and_then(|raw| serde_json::from_str::<Value>(raw).ok())
+        .unwrap_or_else(|| serde_json::json!({ "raw": args.unwrap_or("") }));
+
+    serde_json::json!({
+        "type": "tool_use",
+        "id": call_id,
+        "name": name,
+        "input": input
+    })
+}
+
+fn codex_tool_result_block(call_id: &str, output: &str) -> Value {
+    serde_json::json!({
+        "type": "tool_result",
+        "tool_use_id": call_id,
+        "content": output
+    })
+}
+
+fn codex_thinking_block(summary: &str) -> Value {
+    serde_json::json!({
+        "type": "thinking",
+        "thinking": summary
+    })
+}
+
+async fn read_codex_session_data(session_path: &Path) -> Result<(Vec<Message>, SessionStats, String, CodexSessionMeta), String> {
+    let file = tokio::fs::File::open(session_path)
+        .await
+        .map_err(|e| format!("Failed to open session file: {}", e))?;
+
+    let reader = BufReader::new(file);
+    let mut lines = reader.lines();
+    let mut messages: Vec<Message> = Vec::new();
+    let mut meta = CodexSessionMeta { id: None, cwd: None, timestamp: None, git_branch: None };
+
+    let mut prompt_count = 0;
+    let mut tool_call_count = 0;
+    let mut tool_counts: HashMap<String, usize> = HashMap::new();
+    let mut first_timestamp: Option<DateTime<Utc>> = None;
+    let mut last_timestamp: Option<DateTime<Utc>> = None;
+    let mut summary: Option<String> = None;
+
+    while let Some(line) = lines
+        .next_line()
+        .await
+        .map_err(|e| format!("Error reading line: {}", e))?
+    {
+        if line.trim().is_empty() {
+            continue;
+        }
+
+        let value: Value = match serde_json::from_str(&line) {
+            Ok(v) => v,
+            Err(_) => continue,
+        };
+
+        let entry_type = value.get("type").and_then(|v| v.as_str()).unwrap_or("");
+        let timestamp = value.get("timestamp").and_then(|v| v.as_str()).map(|s| s.to_string());
+
+        if entry_type == "session_meta" {
+            let payload = value.get("payload").cloned().unwrap_or(Value::Null);
+            meta.id = payload.get("id").and_then(|v| v.as_str()).map(|s| s.to_string());
+            meta.cwd = payload.get("cwd").and_then(|v| v.as_str()).map(|s| s.to_string());
+            meta.timestamp = payload.get("timestamp").and_then(|v| v.as_str()).map(|s| s.to_string());
+            meta.git_branch = payload
+                .get("git")
+                .and_then(|g| g.get("branch"))
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string());
+            continue;
+        }
+
+        if entry_type != "response_item" {
+            continue;
+        }
+
+        let payload = value.get("payload").cloned().unwrap_or(Value::Null);
+        let payload_type = payload.get("type").and_then(|v| v.as_str()).unwrap_or("");
+
+        let timestamp_str = timestamp.clone().unwrap_or_default();
+        if let Ok(ts) = DateTime::parse_from_rfc3339(&timestamp_str) {
+            let ts_utc = ts.with_timezone(&Utc);
+            if first_timestamp.is_none() || ts_utc < first_timestamp.unwrap() {
+                first_timestamp = Some(ts_utc);
+            }
+            if last_timestamp.is_none() || ts_utc > last_timestamp.unwrap() {
+                last_timestamp = Some(ts_utc);
+            }
+        }
+
+        match payload_type {
+            "message" => {
+                let role = payload.get("role").and_then(|v| v.as_str()).unwrap_or("assistant");
+                let content = payload.get("content").cloned().unwrap_or(Value::Null);
+                let blocks = codex_text_blocks_from_content(role, &content);
+                if blocks.is_empty() {
+                    continue;
+                }
+
+                if role == "user" {
+                    prompt_count += 1;
+                    if summary.is_none() {
+                        if let Some(first) = blocks.first() {
+                            if let Some(text) = first.get("text").and_then(|v| v.as_str()) {
+                                let cleaned = clean_summary(text);
+                                if !cleaned.is_empty() && !is_garbage_summary(&cleaned) {
+                                    summary = Some(cleaned);
+                                }
+                            }
+                        }
+                    }
+                }
+
+                let msg_type = if role == "user" { "user" } else { "assistant" };
+                messages.push(Message {
+                    uuid: Uuid::new_v4().to_string(),
+                    msg_type: msg_type.to_string(),
+                    timestamp: timestamp.unwrap_or_default(),
+                    content: blocks,
+                    model: None,
+                    usage: None,
+                });
+            }
+            "function_call" => {
+                let name = payload.get("name").and_then(|v| v.as_str()).unwrap_or("tool");
+                let call_id = payload.get("call_id").and_then(|v| v.as_str()).unwrap_or("");
+                let args = payload.get("arguments").and_then(|v| v.as_str());
+
+                tool_call_count += 1;
+                *tool_counts.entry(name.to_string()).or_insert(0) += 1;
+
+                let block = codex_tool_use_block(name, call_id, args);
+                messages.push(Message {
+                    uuid: if !call_id.is_empty() { call_id.to_string() } else { Uuid::new_v4().to_string() },
+                    msg_type: "tool_use".to_string(),
+                    timestamp: timestamp.unwrap_or_default(),
+                    content: vec![block],
+                    model: None,
+                    usage: None,
+                });
+            }
+            "function_call_output" => {
+                let call_id = payload.get("call_id").and_then(|v| v.as_str()).unwrap_or("");
+                let output = payload.get("output").and_then(|v| v.as_str()).unwrap_or("");
+                let block = codex_tool_result_block(call_id, output);
+                messages.push(Message {
+                    uuid: Uuid::new_v4().to_string(),
+                    msg_type: "tool_result".to_string(),
+                    timestamp: timestamp.unwrap_or_default(),
+                    content: vec![block],
+                    model: None,
+                    usage: None,
+                });
+            }
+            "reasoning" => {
+                let summary_text = payload
+                    .get("summary")
+                    .and_then(|v| v.as_array())
+                    .map(|arr| {
+                        arr.iter()
+                            .filter_map(|item| item.get("text").and_then(|v| v.as_str()))
+                            .collect::<Vec<&str>>()
+                            .join("\n")
+                    })
+                    .unwrap_or_default();
+
+                if !summary_text.is_empty() {
+                    let block = codex_thinking_block(&summary_text);
+                    messages.push(Message {
+                        uuid: Uuid::new_v4().to_string(),
+                        msg_type: "assistant".to_string(),
+                        timestamp: timestamp.unwrap_or_default(),
+                        content: vec![block],
+                        model: None,
+                        usage: None,
+                    });
+                }
+            }
+            _ => {}
+        }
+    }
+
+    let message_count = messages.len();
+    let total_pages = (message_count + MESSAGES_PER_PAGE - 1) / MESSAGES_PER_PAGE;
+    let start_timestamp = first_timestamp.map(|ts| ts.to_rfc3339());
+    let end_timestamp = last_timestamp.map(|ts| ts.to_rfc3339());
+
+    let duration_ms = if let (Some(first), Some(last)) = (first_timestamp, last_timestamp) {
+        last.signed_duration_since(first).num_milliseconds().max(0) as u64
+    } else {
+        0
+    };
+
+    let stats = SessionStats {
+        prompt_count,
+        message_count,
+        tool_call_count,
+        total_cost_usd: 0.0,
+        total_pages,
+        duration_ms,
+        start_timestamp,
+        end_timestamp,
+        git_branch: meta.git_branch.clone(),
+        health: None,
+        tool_breakdown: Some(tool_counts),
+        tech_stack: None,
+    };
+
+    let summary_text = summary.unwrap_or_else(|| "Untitled Session".to_string());
+
+    Ok((messages, stats, summary_text, meta))
+}
+
+fn find_codex_session_file(project_id: &str, session_id: &str) -> Result<PathBuf, String> {
+    let root = get_codex_sessions_dir()?;
+    let files = list_codex_session_files(&root);
+
+    for file in files {
+        if let Ok(meta) = read_codex_session_meta(&file) {
+            if let Some(cwd) = meta.cwd.as_ref() {
+                let encoded = encode_project_id(cwd);
+                if encoded != project_id {
+                    continue;
+                }
+            } else {
+                continue;
+            }
+
+            if let Some(id) = meta.id.as_ref() {
+                if id == session_id {
+                    return Ok(file);
+                }
+            }
+        }
+    }
+
+    Err("Session not found".to_string())
 }
 
 fn parse_session_id(filename: &str) -> String {
@@ -1156,6 +1515,7 @@ pub async fn get_projects() -> Result<Vec<Project>, String> {
         if path.is_dir() {
             let project_id = parse_project_id(&path);
             let display_name = resolve_project_name(&path);
+            let resolved_path = find_project_cwd(&path).unwrap_or_else(|| path.clone());
 
             // Count sessions
             let session_count = fs::read_dir(&path)
@@ -1180,7 +1540,7 @@ pub async fn get_projects() -> Result<Vec<Project>, String> {
 
             projects.push(Project {
                 id: project_id,
-                path: path.to_string_lossy().to_string(),
+                path: resolved_path.to_string_lossy().to_string(),
                 display_name,
                 session_count,
                 last_modified,
@@ -1936,5 +2296,149 @@ pub async fn get_all_session_messages(project_id: String, session_id: String) ->
         b_ts.cmp(&a_ts)
     });
 
+    Ok(messages)
+}
+
+// ============================================================================
+// Codex Session Commands
+// ============================================================================
+
+/// Get all Codex projects from ~/.codex/sessions/
+#[tauri::command]
+pub async fn get_codex_projects() -> Result<Vec<Project>, String> {
+    let sessions_dir = get_codex_sessions_dir()?;
+    if !sessions_dir.exists() {
+        return Ok(Vec::new());
+    }
+
+    let files = list_codex_session_files(&sessions_dir);
+    let mut projects: HashMap<String, Project> = HashMap::new();
+
+    for file in files {
+        let meta = read_codex_session_meta(&file)?;
+        let Some(cwd) = meta.cwd else { continue };
+
+        let project_id = encode_project_id(&cwd);
+        let display_name = resolve_project_name_from_cwd(&cwd);
+        let last_modified = get_file_modified_time(&file);
+
+        let entry = projects.entry(project_id.clone()).or_insert(Project {
+            id: project_id.clone(),
+            path: cwd.clone(),
+            display_name,
+            session_count: 0,
+            last_modified,
+        });
+
+        entry.session_count += 1;
+        if last_modified > entry.last_modified {
+            entry.last_modified = last_modified;
+        }
+    }
+
+    let mut result: Vec<Project> = projects.into_values().collect();
+    result.sort_by(|a, b| b.last_modified.cmp(&a.last_modified));
+    Ok(result)
+}
+
+/// Get all Codex sessions for a project
+#[tauri::command]
+pub async fn get_codex_project_sessions(project_id: String) -> Result<Vec<Session>, String> {
+    let sessions_dir = get_codex_sessions_dir()?;
+    if !sessions_dir.exists() {
+        return Ok(Vec::new());
+    }
+
+    let files = list_codex_session_files(&sessions_dir);
+    let mut sessions = Vec::new();
+
+    for file in files {
+        let meta = read_codex_session_meta(&file)?;
+        let Some(cwd) = meta.cwd else { continue };
+        if encode_project_id(&cwd) != project_id {
+            continue;
+        }
+
+        let last_modified = get_file_modified_time(&file);
+        let session_id = meta.id.clone().unwrap_or_else(|| {
+            file.file_stem()
+                .and_then(|s| s.to_str())
+                .unwrap_or("unknown")
+                .to_string()
+        });
+
+        let (messages, stats, summary, _) = read_codex_session_data(&file).await?;
+
+        sessions.push(Session {
+            id: session_id,
+            project_id: project_id.clone(),
+            file_path: file.to_string_lossy().to_string(),
+            last_modified,
+            message_count: messages.len(),
+            summary,
+            stats: Some(stats),
+        });
+    }
+
+    sessions.sort_by(|a, b| b.last_modified.cmp(&a.last_modified));
+    Ok(sessions)
+}
+
+/// Get Codex session details with paginated messages
+#[tauri::command]
+pub async fn get_codex_session_details(project_id: String, session_id: String, page: Option<usize>) -> Result<SessionDetails, String> {
+    let session_path = find_codex_session_file(&project_id, &session_id)?;
+    let (messages, stats, summary, _) = read_codex_session_data(&session_path).await?;
+
+    let last_modified = get_file_modified_time(&session_path);
+    let page_num = page.unwrap_or(1);
+    let start = (page_num.saturating_sub(1)) * MESSAGES_PER_PAGE;
+    let end = (start + MESSAGES_PER_PAGE).min(messages.len());
+    let page_messages = if start < messages.len() {
+        messages[start..end].to_vec()
+    } else {
+        Vec::new()
+    };
+
+    Ok(SessionDetails {
+        id: session_id,
+        project_id,
+        file_path: session_path.to_string_lossy().to_string(),
+        last_modified,
+        message_count: messages.len(),
+        summary,
+        stats: Some(stats),
+        messages: page_messages,
+    })
+}
+
+/// Get Codex session paginated messages
+#[tauri::command]
+pub async fn get_codex_session_paginated(project_id: String, session_id: String, page: Option<usize>) -> Result<PaginatedMessages, String> {
+    let session_path = find_codex_session_file(&project_id, &session_id)?;
+    let (messages, stats, _, _) = read_codex_session_data(&session_path).await?;
+
+    let page_num = page.unwrap_or(1);
+    let start = (page_num.saturating_sub(1)) * MESSAGES_PER_PAGE;
+    let end = (start + MESSAGES_PER_PAGE).min(messages.len());
+    let page_messages = if start < messages.len() {
+        messages[start..end].to_vec()
+    } else {
+        Vec::new()
+    };
+
+    Ok(PaginatedMessages {
+        messages: page_messages,
+        total_pages: stats.total_pages,
+        current_page: page_num,
+        total_messages: messages.len(),
+    })
+}
+
+/// Get all Codex session messages (no pagination)
+#[tauri::command]
+pub async fn get_codex_all_session_messages(project_id: String, session_id: String) -> Result<Vec<Message>, String> {
+    let session_path = find_codex_session_file(&project_id, &session_id)?;
+    let (messages, _, _, _) = read_codex_session_data(&session_path).await?;
     Ok(messages)
 }

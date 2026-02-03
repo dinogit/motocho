@@ -96,6 +96,28 @@ fn get_projects_dir() -> Result<PathBuf, String> {
     Ok(home_dir.join(".claude").join("projects"))
 }
 
+fn get_codex_sessions_dir() -> Result<PathBuf, String> {
+    let home_dir =
+        dirs::home_dir().ok_or_else(|| "Could not determine home directory".to_string())?;
+    Ok(home_dir.join(".codex").join("sessions"))
+}
+
+fn list_codex_session_files(root: &Path) -> Vec<PathBuf> {
+    let mut files = Vec::new();
+    let Ok(entries) = std::fs::read_dir(root) else { return files };
+
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.is_dir() {
+            files.extend(list_codex_session_files(&path));
+        } else if path.extension().map(|e| e == "jsonl").unwrap_or(false) {
+            files.push(path);
+        }
+    }
+
+    files
+}
+
 fn resolve_project_name(project_path: &Path) -> String {
     if let Some(name) = resolve_from_git_remote(project_path) {
         return name;
@@ -182,6 +204,36 @@ fn resolve_from_package_json(project_path: &Path) -> Option<String> {
     None
 }
 
+fn resolve_project_name_from_cwd(cwd: &Path) -> String {
+    let output = Command::new("git")
+        .args(["remote", "get-url", "origin"])
+        .current_dir(cwd)
+        .output()
+        .ok();
+    if let Some(out) = output {
+        if out.status.success() {
+            let url = String::from_utf8_lossy(&out.stdout).trim().to_string();
+            if let Some(name) = extract_repo_name(&url) {
+                return name;
+            }
+        }
+    }
+
+    let pkg_path = cwd.join("package.json");
+    if let Ok(pkg_content) = std::fs::read_to_string(&pkg_path) {
+        if let Ok(pkg_json) = serde_json::from_str::<Value>(&pkg_content) {
+            if let Some(name) = pkg_json.get("name").and_then(|n| n.as_str()) {
+                return name.to_string();
+            }
+        }
+    }
+
+    cwd.file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("Unknown Project")
+        .to_string()
+}
+
 /// Get project working directory from session entries
 fn get_project_cwd(entries: &[RawLogEntry]) -> Option<PathBuf> {
     for entry in entries.iter().take(20) {
@@ -228,6 +280,82 @@ async fn read_session_entries(session_path: &Path) -> Result<Vec<RawLogEntry>, S
     }
 
     Ok(entries)
+}
+
+async fn read_codex_user_messages(session_id: &str) -> Result<(Vec<String>, Option<PathBuf>), String> {
+    let codex_dir = get_codex_sessions_dir()?;
+    if !codex_dir.exists() {
+        return Ok((Vec::new(), None));
+    }
+
+    let files = list_codex_session_files(&codex_dir);
+    for file in files {
+        let content = std::fs::read_to_string(&file)
+            .map_err(|e| format!("Failed to read session file: {}", e))?;
+
+        let mut cwd: Option<PathBuf> = None;
+        let mut messages: Vec<String> = Vec::new();
+        let mut matches = false;
+
+        for line in content.lines() {
+            if line.trim().is_empty() {
+                continue;
+            }
+            let Ok(value) = serde_json::from_str::<Value>(line) else { continue };
+
+            let entry_type = value.get("type").and_then(|v| v.as_str()).unwrap_or("");
+
+            if entry_type == "session_meta" {
+                if let Some(payload) = value.get("payload") {
+                    if let Some(id) = payload.get("id").and_then(|v| v.as_str()) {
+                        if id == session_id {
+                            matches = true;
+                        }
+                    }
+                    if let Some(path) = payload.get("cwd").and_then(|v| v.as_str()) {
+                        cwd = Some(PathBuf::from(path));
+                    }
+                }
+                continue;
+            }
+
+            if !matches {
+                continue;
+            }
+
+            if entry_type != "response_item" {
+                continue;
+            }
+
+            let payload = value.get("payload").cloned().unwrap_or(Value::Null);
+            if payload.get("type").and_then(|v| v.as_str()) != Some("message") {
+                continue;
+            }
+
+            let role = payload.get("role").and_then(|v| v.as_str()).unwrap_or("");
+            if role != "user" {
+                continue;
+            }
+
+            let content = payload.get("content").cloned().unwrap_or(Value::Null);
+            if let Value::Array(arr) = content {
+                for item in arr {
+                    if item.get("type").and_then(|v| v.as_str()) == Some("input_text") {
+                        if let Some(text) = item.get("text").and_then(|v| v.as_str()) {
+                            messages.push(text.to_string());
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        if matches {
+            return Ok((messages, cwd));
+        }
+    }
+
+    Ok((Vec::new(), None))
 }
 
 // ============================================================================
@@ -344,21 +472,29 @@ fn extract_file_artifacts(entries: &[RawLogEntry]) -> Vec<(String, String, Chang
 #[tauri::command]
 pub async fn generate_documentation(
     project_id: String,
+    project_path: Option<String>,
     session_ids: Vec<String>,
+    session_sources: Option<Vec<String>>,
     use_ai: Option<bool>,
     audience: Option<String>,
     custom_prompt: Option<String>,
 ) -> Result<DocumentationResult, String> {
     let use_ai_generation = use_ai.unwrap_or(true);
     let audience_str = audience.unwrap_or_else(|| "engineer".to_string());
-    let projects_dir = get_projects_dir()?;
-    let project_path = projects_dir.join(&project_id);
+    let project_name;
+    let mut resolved_project_path: Option<PathBuf> = None;
 
-    if !project_path.exists() {
-        return Err(format!("Project not found: {}", project_id));
+    if let Some(path) = project_path.as_ref() {
+        resolved_project_path = Some(PathBuf::from(path));
+        project_name = resolve_project_name_from_cwd(Path::new(path));
+    } else {
+        let projects_dir = get_projects_dir()?;
+        let project_path = projects_dir.join(&project_id);
+        if !project_path.exists() {
+            return Err(format!("Project not found: {}", project_id));
+        }
+        project_name = resolve_project_name(&project_path);
     }
-
-    let project_name = resolve_project_name(&project_path);
 
     // ========================================================================
     // Collect data from all sessions
@@ -367,7 +503,22 @@ pub async fn generate_documentation(
     let mut all_file_artifacts: Vec<(String, String, ChangeType)> = Vec::new();
     let mut project_cwd: Option<PathBuf> = None;
 
-    for session_id in &session_ids {
+    let sources = session_sources.unwrap_or_else(|| vec!["code".to_string(); session_ids.len()]);
+
+    for (idx, session_id) in session_ids.iter().enumerate() {
+        let source = sources.get(idx).map(|s| s.as_str()).unwrap_or("code");
+
+        if source == "codex" {
+            let (messages, cwd) = read_codex_user_messages(session_id).await?;
+            all_user_messages.extend(messages);
+            if project_cwd.is_none() {
+                project_cwd = cwd;
+            }
+            continue;
+        }
+
+        let projects_dir = get_projects_dir()?;
+        let project_path = projects_dir.join(&project_id);
         let session_path = project_path.join(format!("{}.jsonl", session_id));
         if !session_path.exists() {
             continue;
@@ -398,7 +549,11 @@ pub async fn generate_documentation(
     eprintln!("[Stage 1] Collecting raw intent data...");
 
     // Read CLAUDE.md if available (verbatim, no extraction)
-    let claude_md_content = project_cwd.as_ref().and_then(|cwd| read_claude_md(cwd));
+    let claude_md_content = if let Some(ref cwd) = project_cwd {
+        read_claude_md(cwd)
+    } else {
+        resolved_project_path.as_ref().and_then(|p| read_claude_md(p))
+    };
 
     // Limit user messages to first 15 total (more context for AI to distill)
     all_user_messages.truncate(15);
@@ -513,25 +668,48 @@ pub async fn generate_documentation(
 #[tauri::command]
 pub async fn get_documentation_prompt(
     project_id: String,
+    project_path: Option<String>,
     session_ids: Vec<String>,
+    session_sources: Option<Vec<String>>,
     audience: Option<String>,
 ) -> Result<String, String> {
     let audience_str = audience.unwrap_or_else(|| "engineer".to_string());
-    let projects_dir = get_projects_dir()?;
-    let project_path = projects_dir.join(&project_id);
+    let project_name;
+    let mut resolved_project_path: Option<PathBuf> = None;
 
-    if !project_path.exists() {
-        return Err(format!("Project not found: {}", project_id));
+    if let Some(path) = project_path.as_ref() {
+        resolved_project_path = Some(PathBuf::from(path));
+        project_name = resolve_project_name_from_cwd(Path::new(path));
+    } else {
+        let projects_dir = get_projects_dir()?;
+        let project_path = projects_dir.join(&project_id);
+        if !project_path.exists() {
+            return Err(format!("Project not found: {}", project_id));
+        }
+        project_name = resolve_project_name(&project_path);
     }
-
-    let project_name = resolve_project_name(&project_path);
 
     // Collect data
     let mut all_user_messages: Vec<String> = Vec::new();
     let mut all_file_artifacts: Vec<(String, String, ChangeType)> = Vec::new();
     let mut project_cwd: Option<PathBuf> = None;
 
-    for session_id in &session_ids {
+    let sources = session_sources.unwrap_or_else(|| vec!["code".to_string(); session_ids.len()]);
+
+    for (idx, session_id) in session_ids.iter().enumerate() {
+        let source = sources.get(idx).map(|s| s.as_str()).unwrap_or("code");
+
+        if source == "codex" {
+            let (messages, cwd) = read_codex_user_messages(session_id).await?;
+            all_user_messages.extend(messages);
+            if project_cwd.is_none() {
+                project_cwd = cwd;
+            }
+            continue;
+        }
+
+        let projects_dir = get_projects_dir()?;
+        let project_path = projects_dir.join(&project_id);
         let session_path = project_path.join(format!("{}.jsonl", session_id));
         if !session_path.exists() {
             continue;
@@ -554,7 +732,11 @@ pub async fn get_documentation_prompt(
     }
 
     // Stage 1: Collect raw data (no interpretation)
-    let claude_md_content = project_cwd.as_ref().and_then(|cwd| read_claude_md(cwd));
+    let claude_md_content = if let Some(ref cwd) = project_cwd {
+        read_claude_md(cwd)
+    } else {
+        resolved_project_path.as_ref().and_then(|p| read_claude_md(p))
+    };
     all_user_messages.truncate(15);
 
     let raw_intent = DataCollector::collect(

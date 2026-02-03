@@ -56,6 +56,7 @@ export function PlanViewPage() {
               <h1 className="text-2xl font-bold flex items-center gap-2">
                 <FileText className="h-6 w-6 text-primary" />
                 {plan.title}
+                <Badge variant="outline" className="text-[10px] py-0">Code</Badge>
               </h1>
               <p className="text-muted-foreground mt-1">{plan.overview}</p>
             </div>

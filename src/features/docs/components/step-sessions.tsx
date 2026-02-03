@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react'
 import { Loader2, FileText } from 'lucide-react'
-import { getProjectSessions } from '@/shared/services/transcripts/client'
+import { getCodexProjectSessions, getCodexProjects, getProjectSessions, getProjects } from '@/shared/services/transcripts/client'
 import { useDocs } from '../context/docs-context'
 import { SessionList } from '@/features/transcripts/components/session-list'
 
@@ -16,8 +16,33 @@ export function StepSessions() {
         async function loadSessions() {
             dispatch({ type: 'SET_LOADING_SESSIONS', payload: true })
             try {
-                const data = await getProjectSessions(selectedProjectId)
-                dispatch({ type: 'SET_SESSIONS', payload: data })
+                const selectedProject = state.projects.find(p => p.id === selectedProjectId)
+                const projectPath = selectedProject?.path
+
+                const [codeProjects, codexProjects] = await Promise.all([
+                    getProjects(),
+                    getCodexProjects(),
+                ])
+
+                const codeProject = projectPath
+                    ? codeProjects.find(p => p.path === projectPath)
+                    : codeProjects.find(p => p.id === selectedProjectId)
+
+                const codexProject = projectPath
+                    ? codexProjects.find(p => p.path === projectPath)
+                    : codexProjects.find(p => p.id === selectedProjectId)
+
+                const [codeSessions, codexSessions] = await Promise.all([
+                    codeProject ? getProjectSessions(codeProject.id) : Promise.resolve([]),
+                    codexProject ? getCodexProjectSessions(codexProject.id) : Promise.resolve([]),
+                ])
+
+                const merged = [
+                    ...codeSessions.map(s => ({ ...s, source: 'code' as const })),
+                    ...codexSessions.map(s => ({ ...s, source: 'codex' as const })),
+                ].sort((a, b) => Number(b.lastModified) - Number(a.lastModified))
+
+                dispatch({ type: 'SET_SESSIONS', payload: merged })
             } catch (error) {
                 console.error('Failed to load sessions:', error)
             } finally {
@@ -25,7 +50,7 @@ export function StepSessions() {
             }
         }
         loadSessions()
-    }, [selectedProjectId, dispatch])
+    }, [selectedProjectId, dispatch, state.projects])
 
     const handleToggleSelection = (sessionId: string) => {
         dispatch({ type: 'TOGGLE_SESSION', payload: sessionId })

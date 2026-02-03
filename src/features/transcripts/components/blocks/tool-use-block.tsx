@@ -60,6 +60,16 @@ const TOOL_ICONS: Record<string, React.ElementType> = {
   Task: Bot,
   AskUserQuestion: HelpCircle,
   Command: Terminal,
+  shell_command: Terminal,
+  apply_patch: FileEdit,
+  view_image: FileSearch,
+  request_user_input: HelpCircle,
+  update_plan: ListTodo,
+  list_mcp_resources: Database,
+  list_mcp_resource_templates: Database,
+  read_mcp_resource: Database,
+  'multi_tool_use.parallel': Plug,
+  parallel: Plug,
 }
 
 const TOOL_COLORS: Record<string, string> = {
@@ -75,6 +85,16 @@ const TOOL_COLORS: Record<string, string> = {
   Task: 'bg-violet-500/10 border-violet-500/30 text-violet-900 dark:text-violet-300',
   AskUserQuestion: 'bg-amber-500/10 border-amber-500/30 text-amber-300 dark:text-amber-300',
   Command: 'bg-slate-500/10 border-slate-500/30 text-slate-900 dark:text-slate-300',
+  shell_command: 'bg-slate-500/10 border-slate-500/30 text-slate-900 dark:text-slate-300',
+  apply_patch: 'bg-blue-500/10 border-blue-500/30 text-blue-900 dark:text-blue-300',
+  view_image: 'bg-gray-500/10 border-gray-500/30 text-gray-900 dark:text-gray-300',
+  request_user_input: 'bg-amber-500/10 border-amber-500/30 text-amber-300 dark:text-amber-300',
+  update_plan: 'bg-pink-500/10 border-pink-500/30 text-pink-900 dark:text-pink-300',
+  list_mcp_resources: 'bg-emerald-500/10 border-emerald-500/30 text-emerald-900 dark:text-emerald-300',
+  list_mcp_resource_templates: 'bg-emerald-500/10 border-emerald-500/30 text-emerald-900 dark:text-emerald-300',
+  read_mcp_resource: 'bg-emerald-500/10 border-emerald-500/30 text-emerald-900 dark:text-emerald-300',
+  'multi_tool_use.parallel': 'bg-cyan-500/10 border-cyan-500/30 text-cyan-900 dark:text-cyan-300',
+  parallel: 'bg-cyan-500/10 border-cyan-500/30 text-cyan-900 dark:text-cyan-300',
 }
 
 // Sub-agent type descriptions
@@ -350,6 +370,59 @@ function renderToolSummary(name: string, input: Record<string, any>): React.Reac
           {String(input.command || '')}
         </code>
       )
+    case 'shell_command':
+      return (
+        <code className="text-[10px] bg-black/10 px-1.5 py-0.5 rounded truncate max-w-[300px]">
+          {String(input.command || '')}
+        </code>
+      )
+    case 'apply_patch': {
+      const patch = typeof input === 'string' ? input : (input.patch || input.input || '')
+      return (
+        <code className="text-[10px] bg-black/10 px-1.5 py-0.5 rounded truncate max-w-[300px]">
+          {String(patch).split('\n')[0].slice(0, 60)}
+        </code>
+      )
+    }
+    case 'view_image':
+      return (
+        <code className="text-[10px] bg-black/10 px-1.5 py-0.5 rounded truncate max-w-[300px]">
+          {String(input.path || input.file_path || '')}
+        </code>
+      )
+    case 'request_user_input': {
+      const questions = input.questions as Array<{ question?: string }> | undefined
+      return (
+        <span className="text-[10px] text-muted-foreground truncate max-w-[300px]">
+          {String(questions?.[0]?.question || '').slice(0, 40)}...
+        </span>
+      )
+    }
+    case 'update_plan': {
+      const plan = input.plan as Array<{ step?: string }> | undefined
+      return (
+        <span className="text-[10px] text-muted-foreground truncate max-w-[300px]">
+          {plan?.length ? `${plan.length} steps` : 'Plan update'}
+        </span>
+      )
+    }
+    case 'list_mcp_resources':
+    case 'list_mcp_resource_templates':
+    case 'read_mcp_resource':
+      return (
+        <code className="text-[10px] bg-black/10 px-1.5 py-0.5 rounded truncate max-w-[300px]">
+          {String(input.server || input.uri || '')}
+        </code>
+      )
+    case 'multi_tool_use.parallel':
+    case 'parallel': {
+      const toolUses = input.tool_uses as Array<{ recipient_name?: string }> | undefined
+      return (
+        <span className="text-[10px] text-muted-foreground truncate max-w-[300px]">
+          {toolUses?.length ? `${toolUses.length} tool calls` : 'Parallel tools'}
+        </span>
+      )
+    }
     default:
       // For general MCP tools, try to show the first interesting textual param
       const keys = Object.keys(input).filter(k => typeof input[k] === 'string' && k !== 'type')
@@ -510,6 +583,144 @@ function renderToolInput(name: string, input: Record<string, any>): React.ReactN
           )}
         </div>
       )
+    case 'shell_command':
+      return (
+        <div className="space-y-2">
+          {input.workdir && (
+            <div className="text-xs">
+              <span className="text-muted-foreground">Workdir: </span>
+              <code className="bg-black/10 px-1 rounded">{String(input.workdir)}</code>
+            </div>
+          )}
+          <pre className="bg-black/10 rounded p-2 text-xs font-mono overflow-x-auto">
+            {String(input.command)}
+          </pre>
+          {input.justification && (
+            <div className="text-xs text-muted-foreground bg-black/5 p-2 rounded">
+              {String(input.justification)}
+            </div>
+          )}
+        </div>
+      )
+    case 'apply_patch': {
+      const patch = typeof input === 'string' ? input : (input.patch || input.input || '')
+      return (
+        <div className="space-y-2">
+          <pre className="bg-black/10 rounded p-2 text-xs font-mono overflow-x-auto max-h-[300px]">
+            {String(patch)}
+          </pre>
+        </div>
+      )
+    }
+    case 'view_image':
+      return (
+        <div className="text-xs">
+          <span className="text-muted-foreground">Path: </span>
+          <code className="bg-black/10 px-1 rounded">{String(input.path || input.file_path)}</code>
+        </div>
+      )
+    case 'request_user_input': {
+      const questions = input.questions as Array<{
+        question: string
+        header?: string
+        options?: Array<{ label: string; description?: string }>
+      }> | undefined
+      if (!questions) return null
+      return (
+        <div className="space-y-3">
+          {questions.map((q, i) => (
+            <div key={i} className="space-y-2">
+              {q.header && (
+                <Badge variant="outline" className="text-[10px] bg-amber-500/20 text-amber-800">
+                  {q.header}
+                </Badge>
+              )}
+              <p className="text-xs font-medium">{q.question}</p>
+              {q.options && (
+                <div className="space-y-1 pl-2 border-l-2 border-amber-500/30">
+                  {q.options.map((opt, j) => (
+                    <div key={j} className="text-xs">
+                      <span className="font-medium">{opt.label}</span>
+                      {opt.description && (
+                        <span className="text-muted-foreground ml-1">- {opt.description}</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )
+    }
+    case 'update_plan': {
+      const plan = input.plan as Array<{ step?: string; status?: string }> | undefined
+      if (!plan) return null
+      return (
+        <div className="space-y-1">
+          {plan.map((item, i) => (
+            <div key={i} className="flex items-center gap-2 text-xs">
+              <Badge
+                variant="outline"
+                className={cn(
+                  'text-[10px]',
+                  item.status === 'completed' && 'bg-green-500/10 text-green-700',
+                  item.status === 'in_progress' && 'bg-yellow-500/10 text-yellow-700',
+                  item.status === 'pending' && 'bg-gray-500/10 text-gray-700'
+                )}
+              >
+                {item.status || 'pending'}
+              </Badge>
+              <span>{item.step || 'Untitled step'}</span>
+            </div>
+          ))}
+        </div>
+      )
+    }
+    case 'list_mcp_resources':
+    case 'list_mcp_resource_templates':
+    case 'read_mcp_resource':
+      return (
+        <div className="space-y-2 text-xs">
+          {input.server && (
+            <div>
+              <span className="text-muted-foreground">Server: </span>
+              <code className="bg-black/10 px-1 rounded">{String(input.server)}</code>
+            </div>
+          )}
+          {input.uri && (
+            <div>
+              <span className="text-muted-foreground">URI: </span>
+              <code className="bg-black/10 px-1 rounded">{String(input.uri)}</code>
+            </div>
+          )}
+          {input.cursor && (
+            <div>
+              <span className="text-muted-foreground">Cursor: </span>
+              <code className="bg-black/10 px-1 rounded">{String(input.cursor)}</code>
+            </div>
+          )}
+        </div>
+      )
+    case 'multi_tool_use.parallel':
+    case 'parallel': {
+      const toolUses = input.tool_uses as Array<{ recipient_name?: string; parameters?: Record<string, any> }> | undefined
+      if (!toolUses || toolUses.length === 0) return null
+      return (
+        <div className="space-y-2">
+          {toolUses.map((tool, i) => (
+            <div key={i} className="text-xs space-y-1">
+              <Badge variant="outline" className="text-[10px]">
+                {tool.recipient_name || 'tool'}
+              </Badge>
+              <pre className="bg-black/10 rounded p-2 text-[10px] font-mono overflow-x-auto">
+                {JSON.stringify(tool.parameters ?? {}, null, 2)}
+              </pre>
+            </div>
+          ))}
+        </div>
+      )
+    }
 
     default:
       return (

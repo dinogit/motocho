@@ -4,6 +4,7 @@ export interface Project {
   path: string
   sessionCount: number
   lastModified: string | Date
+  source?: 'code' | 'codex' | 'both'
 }
 
 export interface Session {
@@ -18,6 +19,7 @@ export interface Session {
   linesWritten?: number
   processingTime?: number
   stats?: SessionStats
+  source?: 'code' | 'codex'
 }
 
 export interface SessionDetails {

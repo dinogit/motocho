@@ -9,12 +9,13 @@ const chartConfig: ChartConfig = {
 }
 
 interface HourlyActivityChartProps {
-  data?: Record<string, Record<string, number>>
+  data: Record<string, Record<string, number>>
 }
 
 export function HourlyActivityChart({ data }: HourlyActivityChartProps) {
   const code = data?.code ?? {}
   const codex = data?.codex ?? {}
+
   const chartData = Array.from({ length: 24 }, (_, hour) => ({
     hour: `${hour.toString().padStart(2, '0')}:00`,
     code: code[hour.toString()] || 0,
@@ -26,9 +27,9 @@ export function HourlyActivityChart({ data }: HourlyActivityChartProps) {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Clock className="h-4 w-4" />
-          Activity by Hour (Code + Codex)
+          Activity by Hour
         </CardTitle>
-        <CardDescription>Message volume by hour, split by source</CardDescription>
+        <CardDescription>Message volume split by source</CardDescription>
       </CardHeader>
       <CardContent>
         <ChartContainer config={chartConfig} className="h-[300px] w-full">

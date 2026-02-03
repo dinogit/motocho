@@ -7,6 +7,7 @@
 import { Link } from '@tanstack/react-router'
 import { FileText, Calendar, ArrowRight } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui/card'
+import { Badge } from '@/shared/components/ui/badge'
 import { Route } from '@/routes/plans/index'
 import type { PlanSummary } from '@/shared/types/plans'
 
@@ -17,7 +18,10 @@ export function PlansPage() {
     <div className="flex flex-1 flex-col">
       <div className="max-w-full mx-auto w-full p-6">
         <div className="mb-6">
-          <h1 className="text-2xl font-bold mb-2">Plans</h1>
+          <h1 className="text-2xl font-bold mb-2 flex items-center gap-2">
+            Plans
+            <Badge variant="outline" className="text-[10px] py-0">Code</Badge>
+          </h1>
           <p className="text-muted-foreground">
             View implementation plans created by Claude Code.
           </p>
@@ -44,6 +48,7 @@ export function PlansPage() {
                         <CardTitle className="text-lg flex items-center gap-2">
                           <FileText className="h-5 w-5 text-chart-1" />
                           {plan.title}
+                          <Badge variant="outline" className="text-[10px] py-0">Code</Badge>
                         </CardTitle>
                         <CardDescription className="mt-1 line-clamp-2">
                           {plan.overview}

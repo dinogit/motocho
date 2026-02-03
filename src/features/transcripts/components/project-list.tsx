@@ -15,7 +15,7 @@ export function ProjectList({ projects }: ProjectListProps) {
       <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
         <Folder className="h-12 w-12 mb-4" />
         <p className="text-lg">No projects found</p>
-        <p className="text-sm">Claude Code sessions will appear here</p>
+        <p className="text-sm">Code and Codex sessions will appear here</p>
       </div>
     )
   }
@@ -27,15 +27,21 @@ export function ProjectList({ projects }: ProjectListProps) {
           key={project.id}
           to="/transcripts/$projectId"
           params={{ projectId: project.id }}
+          search={{ source: project.source || 'code' }}
           className="block"
         >
           <Card className="h-full transition-colors hover:bg-muted/50">
             <CardHeader className="pb-2">
               <div className="flex items-start justify-between">
                 <Folder className="h-5 w-5 text-chart-1" />
-                <Badge variant="secondary">
-                  {project.sessionCount} {project.sessionCount === 1 ? 'session' : 'sessions'}
-                </Badge>
+                <div className="flex items-center gap-2">
+                  <Badge variant="secondary">
+                    {project.sessionCount} {project.sessionCount === 1 ? 'session' : 'sessions'}
+                  </Badge>
+                  <Badge variant="outline">
+                    {project.source === 'both' ? 'Code + Codex' : project.source === 'codex' ? 'Codex' : 'Code'}
+                  </Badge>
+                </div>
               </div>
               <CardTitle className="text-base leading-tight mt-2">
                 {project.displayName}

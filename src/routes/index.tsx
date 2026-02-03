@@ -38,9 +38,9 @@ function App() {
     <div className="flex flex-1 flex-col p-6">
       <div className="max-w-4xl mx-auto w-full">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2">Claude Code Dashboard</h1>
+          <h1 className="text-3xl font-bold mb-2">Motochō Dashboard</h1>
           <p className="text-muted-foreground">
-            View and analyze your Claude Code sessions, transcripts, and usage statistics.
+            View and analyze your AI agents sessions, transcripts, and usage statistics.
           </p>
         </div>
 

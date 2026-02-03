@@ -11,6 +11,8 @@ export function StepResult() {
     const {
         selectedProjectId,
         selectedSessionIds,
+        sessions,
+        projects,
         audience,
         customPrompt,
         defaultPrompt,
@@ -28,12 +30,18 @@ export function StepResult() {
         dispatch({ type: 'SET_IS_GENERATING', payload: true })
         try {
             const promptToUse = hasCustomPrompt ? customPrompt : undefined
+            const selectedProject = projects.find(p => p.id === selectedProjectId)
+            const projectPath = selectedProject?.path
+            const selectedSessions = sessions.filter(s => selectedSessionIds.includes(s.id))
+            const sessionSources = selectedSessions.map(s => (s.source || 'code') as 'code' | 'codex')
             const result = await generateDocumentation(
                 selectedProjectId,
                 selectedSessionIds,
                 true,
                 audience,
-                promptToUse
+                promptToUse,
+                projectPath,
+                sessionSources
             )
             dispatch({ type: 'SET_GENERATED_DOC', payload: result.markdown })
         } catch (error) {

@@ -26,9 +26,9 @@ export function TokensChart({ data }: TokensChartProps) {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Zap className="h-4 w-4" />
-          Daily Token Usage
+          Daily Token Usage (Code + Codex)
         </CardTitle>
-        <CardDescription>Tokens consumed per day</CardDescription>
+        <CardDescription>Tokens consumed per day across all agents</CardDescription>
       </CardHeader>
       <CardContent>
         <ChartContainer config={chartConfig} className="h-[300px] w-full">

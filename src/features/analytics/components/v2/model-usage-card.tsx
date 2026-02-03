@@ -1,32 +1,45 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui/card'
+import { Badge } from '@/shared/components/ui/badge'
 import { Bot } from 'lucide-react'
-import type { StatsCache } from '@/shared/types/analytics'
+import type { ModelUsageEntryV2 } from '@/shared/types/analytics-v2'
 
 interface ModelUsageCardProps {
-  data: StatsCache['modelUsage']
+  data: ModelUsageEntryV2[]
+}
+
+function formatModelName(modelId: string) {
+  return modelId.replace('claude-', '').replace(/-\d+$/, '')
 }
 
 export function ModelUsageCard({ data }: ModelUsageCardProps) {
+  const sorted = [...data].sort((a, b) => {
+    const aTokens = a.inputTokens + a.outputTokens + a.cacheReadInputTokens + a.cacheCreationInputTokens
+    const bTokens = b.inputTokens + b.outputTokens + b.cacheReadInputTokens + b.cacheCreationInputTokens
+    return bTokens - aTokens
+  })
+
   return (
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Bot className="h-4 w-4" />
-          Model Usage (Code + Codex)
+          Model Usage
         </CardTitle>
-        <CardDescription>Tokens and cost by model across all agents</CardDescription>
+        <CardDescription>Tokens and cost by model</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
-          {Object.entries(data).map(([modelId, usage]) => {
-            const modelName = modelId.replace('claude-', '').replace(/-\d+$/, '')
-            const totalTokens = usage.inputTokens + usage.outputTokens +
-              usage.cacheReadInputTokens + usage.cacheCreationInputTokens
-
+          {sorted.map((usage) => {
+            const totalTokens = usage.inputTokens + usage.outputTokens + usage.cacheReadInputTokens + usage.cacheCreationInputTokens
             return (
-              <div key={modelId} className="space-y-2">
+              <div key={`${usage.source}-${usage.modelId}`} className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="font-medium">{modelName}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium">{formatModelName(usage.modelId)}</span>
+                    <Badge variant="outline" className="text-[10px] py-0">
+                      {usage.source}
+                    </Badge>
+                  </div>
                   <div className="text-sm text-muted-foreground text-right">
                     <div>{(totalTokens / 1_000_000).toFixed(1)}M tokens</div>
                     <div>${usage.costUSD.toFixed(2)}</div>
@@ -51,15 +64,11 @@ export function ModelUsageCard({ data }: ModelUsageCardProps) {
                   </div>
                   <div className="flex justify-between rounded bg-muted/50 px-2 py-1">
                     <span className="text-muted-foreground">Messages</span>
-                    <span>{(usage.messageCount ?? 0).toLocaleString()}</span>
+                    <span>{usage.messageCount.toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between rounded bg-amber-500/10 px-2 py-1">
                     <span className="text-muted-foreground">Context</span>
                     <span>{usage.contextWindow.toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between rounded bg-indigo-500/10 px-2 py-1">
-                    <span className="text-muted-foreground">Web Search</span>
-                    <span>{usage.webSearchRequests}</span>
                   </div>
                 </div>
               </div>

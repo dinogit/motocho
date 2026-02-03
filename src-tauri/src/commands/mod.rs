@@ -5,6 +5,7 @@
 
 pub mod fs_utils;
 pub mod analytics;
+pub mod analytics_v2;
 pub mod history;
 pub mod transcripts;
 pub mod plans;
@@ -25,6 +26,7 @@ pub mod docs;
 // Re-export all commands
 pub use fs_utils::*;
 pub use analytics::*;
+pub use analytics_v2::*;
 pub use history::*;
 pub use transcripts::*;
 pub use plans::*;
