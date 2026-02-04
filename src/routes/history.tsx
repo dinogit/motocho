@@ -18,7 +18,12 @@ export const Route = createFileRoute('/history')({
       (a, b) => b.entry.timestamp - a.entry.timestamp
     )
 
-    const projects: HistoryProjectInfo[] = [...codeProjects, ...codexProjects]
+    const projects: HistoryProjectInfo[] = [
+      ...codeProjects.map(p => ({ ...p, source: 'code' as const })),
+      ...codexProjects
+    ]
+
+    const getDateTimeMs = (date: Date | number) => date instanceof Date ? date.getTime() : date
 
     const stats: HistoryStats | null = codeStats && codexStats
       ? {
@@ -26,8 +31,8 @@ export const Route = createFileRoute('/history')({
           uniqueProjects: codeStats.uniqueProjects + codexStats.uniqueProjects,
           uniqueSessions: codeStats.uniqueSessions + codexStats.uniqueSessions,
           dateRange: {
-            first: Math.min(codeStats.dateRange.first as any, codexStats.dateRange.first as any),
-            last: Math.max(codeStats.dateRange.last as any, codexStats.dateRange.last as any),
+            first: new Date(Math.min(getDateTimeMs(codeStats.dateRange.first), getDateTimeMs(codexStats.dateRange.first))),
+            last: new Date(Math.max(getDateTimeMs(codeStats.dateRange.last), getDateTimeMs(codexStats.dateRange.last))),
           },
         }
       : (codeStats || codexStats)

@@ -58,7 +58,7 @@ When you push a version tag (e.g., `v0.2.0`), GitHub Actions will:
    - Windows: `.msi` installer
 
 3. **Create GitHub Release:**
-   - Release title: "Claude Code Dashboard v0.2.0"
+   - Release title: "Motochō v0.2.0"
    - Installers attached as downloadable assets
    - Automatically published (not a draft)
 

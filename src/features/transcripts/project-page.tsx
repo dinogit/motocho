@@ -9,6 +9,7 @@ import {
   PageHeaderSeparator,
 } from '@/shared/components/page/page-header'
 import type { Project, Session } from '@/shared/types/transcripts'
+import { Route } from '@/routes/transcripts/$projectId'
 
 type LoaderData = {
   project: Project
@@ -17,9 +18,10 @@ type LoaderData = {
 }
 
 export function ProjectPage() {
-  const data = useLoaderData({ from: '/transcripts/$projectId/' }) as LoaderData
+  const data = Route.useLoaderData() as LoaderData
   const { project, sessions, source } = data
   const sourceLabel = source === 'both' ? 'Code + Codex' : source === 'codex' ? 'Codex' : 'Code'
+
 
   return (
     <>

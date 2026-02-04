@@ -8,7 +8,7 @@ interface SessionListProps {
   mode?: SessionListMode
   selectedSessionIds?: string[]
   onToggleSelection?: (sessionId: string) => void
-  source?: 'code' | 'codex'
+  source?: 'code' | 'codex' | 'both'
 }
 
 export function SessionList({

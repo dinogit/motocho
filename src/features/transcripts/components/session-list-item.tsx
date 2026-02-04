@@ -15,7 +15,7 @@ interface SessionListItemProps {
   mode?: SessionListMode
   isSelected?: boolean
   onSelect?: () => void
-  source?: 'code' | 'codex'
+  source?: 'code' | 'codex' | 'both'
 }
 
 export function SessionListItem({
@@ -27,7 +27,7 @@ export function SessionListItem({
   source,
 }: SessionListItemProps) {
   const isSelectable = mode === 'selectable'
-  const sourceLabel = source === 'codex' ? 'Codex' : 'Code'
+  const sourceLabel = source === 'codex' ? 'Codex' : source === 'both' ? 'Code + Codex' : 'Code'
   const routeProjectId = session.projectId || projectId
   const codexTools = [
     'shell_command',
@@ -41,7 +41,7 @@ export function SessionListItem({
     'multi_tool_use.parallel',
   ]
   const toolBreakdown = session.stats?.toolBreakdown ?? {}
-  const showCodexTools = source === 'codex'
+  const showCodexTools = source === 'codex' || source === 'both'
 
   const handleCardClick = (e: React.MouseEvent) => {
     if (isSelectable && onSelect) {

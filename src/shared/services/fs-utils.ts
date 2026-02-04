@@ -157,7 +157,6 @@ export async function readJsonlPaginated(
 
 /**
  * Get the user's home directory
- * E.g., /Users/dinokljuco on macOS, C:\Users\dinokljuco on Windows
  */
 export async function getHomeDir(): Promise<string> {
   return invoke<string>('get_home_dir', {})
