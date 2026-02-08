@@ -1,299 +1,127 @@
-Welcome to your new TanStack app! 
+# Motocho
 
-# Getting Started
+A desktop dashboard for analyzing and reporting on Claude Code activity. Browse session transcripts, track token usage and costs, manage MCP servers, and generate reports — all from a single interface that reads directly from your local `~/.claude/` data.
 
-To run this application:
+## What It Does
+
+Motocho reads the JSONL session transcripts and stats that Claude Code stores locally on your machine, then presents them as an organized, searchable dashboard with analytics and reporting capabilities. Think of it as a control center for everything Claude Code does across your projects.
+
+### Key Features
+
+- **Analytics Dashboard** — Track sessions, messages, tool calls, token usage, and costs over time. Includes daily activity charts, hourly heatmaps, model usage breakdowns, and source-aware tracking (Claude Code vs. Codex).
+- **Session Transcripts** — Browse and search full conversation transcripts organized by project. View messages, tool calls, thinking blocks, and images with pagination for large sessions.
+- **Report Generation** — Generate reports for specific date ranges with AI-powered summaries of what was accomplished.
+- **History Search** — Search across all prompts and sessions, filtered by project or globally.
+- **MCP Server Management** — View, add, and manage Model Context Protocol servers (global and per-project). Includes a marketplace for discovering plugins.
+- **Skills & Instructions** — Browse `CLAUDE.md` files across projects, manage custom skills, and bulk-copy skills between projects.
+- **Settings** — Configure global and project-specific Claude model settings, thinking mode, and other preferences.
+- **Hooks Reference** — Interactive reference guide for Claude Code lifecycle hooks.
+- **Documentation Generator** — Wizard-based docs generation from selected projects and sessions.
+
+## Architecture
+
+```
+~/.claude/projects/           Claude Code's local JSONL transcripts & config
+        |
+        v
+┌─────────────────────┐
+│   Tauri Backend      │      Rust — file I/O, JSONL parsing, stats processing
+│   (src-tauri/)       │      Exposes commands via Tauri IPC
+└────────┬────────────┘
+         |  invoke()
+         v
+┌─────────────────────┐
+│  Service Layer       │      TypeScript — bridges Tauri commands to React
+│  (src/shared/        │      Handles parsing, cost calculation, type mapping
+│   services/)         │
+└────────┬────────────┘
+         |
+         v
+┌─────────────────────┐
+│  React UI            │      TanStack Router pages + feature components
+│  (src/routes/,       │      shadcn/ui + Recharts for visualization
+│   src/features/)     │
+└─────────────────────┘
+```
+
+### How Transcripts Are Parsed
+
+1. The Rust backend reads JSONL files from `~/.claude/projects/{projectId}/sessions/{sessionId}.jsonl`
+2. Each line is a JSON entry — `user`, `assistant`, `tool_use`, `tool_result`, `progress`, or `summary`
+3. The TypeScript service layer maps raw entries into structured `Message` objects with content blocks, token usage, and timestamps
+4. Cost is calculated per-message using model-specific pricing (Opus, Sonnet, Haiku)
+5. Session stats (duration, message count, total cost) are computed and displayed
+
+### How Analytics Work
+
+- **Primary source**: `~/.claude/stats-cache.json` — pre-computed daily/hourly activity, model usage, and token counts
+- **Secondary source**: Session transcripts parsed on-the-fly for detailed breakdowns
+- **V2 analytics**: Splits metrics by source (Claude Code vs. Codex) with per-model token and cost tracking
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|------------|
+| Desktop | Tauri 2.9 |
+| Backend | Rust (tokio, serde, chrono) |
+| Frontend | React 19, TypeScript 5.7 |
+| Routing | TanStack Router (file-based) |
+| UI Components | shadcn/ui (Radix primitives) |
+| Styling | Tailwind CSS 4 |
+| Charts | Recharts |
+| Tables | TanStack Table |
+| Forms | React Hook Form + Zod |
+| Build | Vite 7, pnpm |
+
+## Project Structure
+
+```
+src/
+├── features/          Feature modules by domain
+│   ├── analytics/       Usage dashboard & charts
+│   ├── transcripts/     Session transcript viewer
+│   ├── history/         Prompt history search
+│   ├── reports/         Report generation
+│   ├── mcp/             MCP server management
+│   ├── skills/          Skills & instructions
+│   ├── settings/        Configuration UI
+│   ├── hooks/           Hooks reference
+│   ├── docs/            Documentation wizard
+│   ├── files/           File change tracking
+│   └── claude-code/     Tool reference
+├── routes/            TanStack Router file-based pages
+├── shared/
+│   ├── services/        Tauri IPC client bridges
+│   ├── types/           TypeScript interfaces
+│   ├── components/      Reusable UI (shadcn, navigation, layout)
+│   ├── hooks/           Custom React hooks
+│   └── lib/             Utilities
+src-tauri/
+├── src/
+│   ├── commands/        Rust command handlers (transcripts, analytics, MCP, etc.)
+│   ├── docs/            Documentation generation logic
+│   └── lib.rs           Tauri app setup
+```
+
+## Development
 
 ```bash
+# Install dependencies
 pnpm install
-pnpm start
+
+# Run in development (frontend + Tauri)
+pnpm tauri:dev
+
+# Build for production
+pnpm tauri:build
+
+# Mac universal binary
+pnpm tauri:build:mac
+
+# Windows
+pnpm tauri:build:windows
 ```
 
-# Building For Production
+## License
 
-To build this application for production:
-
-```bash
-pnpm build
-```
-
-## Testing
-
-This project uses [Vitest](https://vitest.dev/) for testing. You can run the tests with:
-
-```bash
-pnpm test
-```
-
-## Styling
-
-This project uses [Tailwind CSS](https://tailwindcss.com/) for styling.
-
-
-
-## Shadcn
-
-Add components using the latest version of [Shadcn](https://ui.shadcn.com/).
-
-```bash
-pnpm dlx shadcn@latest add button
-```
-
-
-
-## Routing
-This project uses [TanStack Router](https://tanstack.com/router). The initial setup is a file based router. Which means that the routes are managed as files in `src/routes`.
-
-### Adding A Route
-
-To add a new route to your application just add another a new file in the `./src/routes` directory.
-
-TanStack will automatically generate the content of the route file for you.
-
-Now that you have two routes you can use a `Link` component to navigate between them.
-
-### Adding Links
-
-To use SPA (Single Page Application) navigation you will need to import the `Link` component from `@tanstack/react-router`.
-
-```tsx
-import { Link } from "@tanstack/react-router";
-```
-
-Then anywhere in your JSX you can use it like so:
-
-```tsx
-<Link to="/about">About</Link>
-```
-
-This will create a link that will navigate to the `/about` route.
-
-More information on the `Link` component can be found in the [Link documentation](https://tanstack.com/router/v1/docs/framework/react/api/router/linkComponent).
-
-### Using A Layout
-
-In the File Based Routing setup the layout is located in `src/routes/__root.tsx`. Anything you add to the root route will appear in all the routes. The route content will appear in the JSX where you use the `<Outlet />` component.
-
-Here is an example layout that includes a header:
-
-```tsx
-import { Outlet, createRootRoute } from '@tanstack/react-router'
-import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
-
-import { Link } from "@tanstack/react-router";
-
-export const Route = createRootRoute({
-  component: () => (
-    <>
-      <header>
-        <nav>
-          <Link to="/">Home</Link>
-          <Link to="/about">About</Link>
-        </nav>
-      </header>
-      <Outlet />
-      <TanStackRouterDevtools />
-    </>
-  ),
-})
-```
-
-The `<TanStackRouterDevtools />` component is not required so you can remove it if you don't want it in your layout.
-
-More information on layouts can be found in the [Layouts documentation](https://tanstack.com/router/latest/docs/framework/react/guide/routing-concepts#layouts).
-
-
-## Data Fetching
-
-There are multiple ways to fetch data in your application. You can use TanStack Query to fetch data from a server. But you can also use the `loader` functionality built into TanStack Router to load the data for a route before it's rendered.
-
-For example:
-
-```tsx
-const peopleRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: "/people",
-  loader: async () => {
-    const response = await fetch("https://swapi.dev/api/people");
-    return response.json() as Promise<{
-      results: {
-        name: string;
-      }[];
-    }>;
-  },
-  component: () => {
-    const data = peopleRoute.useLoaderData();
-    return (
-      <ul>
-        {data.results.map((person) => (
-          <li key={person.name}>{person.name}</li>
-        ))}
-      </ul>
-    );
-  },
-});
-```
-
-Loaders simplify your data fetching logic dramatically. Check out more information in the [Loader documentation](https://tanstack.com/router/latest/docs/framework/react/guide/data-loading#loader-parameters).
-
-### React-Query
-
-React-Query is an excellent addition or alternative to route loading and integrating it into you application is a breeze.
-
-First add your dependencies:
-
-```bash
-pnpm add @tanstack/react-query @tanstack/react-query-devtools
-```
-
-Next we'll need to create a query client and provider. We recommend putting those in `main.tsx`.
-
-```tsx
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-
-// ...
-
-const queryClient = new QueryClient();
-
-// ...
-
-if (!rootElement.innerHTML) {
-  const root = ReactDOM.createRoot(rootElement);
-
-  root.render(
-    <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
-    </QueryClientProvider>
-  );
-}
-```
-
-You can also add TanStack Query Devtools to the root route (optional).
-
-```tsx
-import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
-
-const rootRoute = createRootRoute({
-  component: () => (
-    <>
-      <Outlet />
-      <ReactQueryDevtools buttonPosition="top-right" />
-      <TanStackRouterDevtools />
-    </>
-  ),
-});
-```
-
-Now you can use `useQuery` to fetch your data.
-
-```tsx
-import { useQuery } from "@tanstack/react-query";
-
-import "./App.css";
-
-function App() {
-  const { data } = useQuery({
-    queryKey: ["people"],
-    queryFn: () =>
-      fetch("https://swapi.dev/api/people")
-        .then((res) => res.json())
-        .then((data) => data.results as { name: string }[]),
-    initialData: [],
-  });
-
-  return (
-    <div>
-      <ul>
-        {data.map((person) => (
-          <li key={person.name}>{person.name}</li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-
-export default App;
-```
-
-You can find out everything you need to know on how to use React-Query in the [React-Query documentation](https://tanstack.com/query/latest/docs/framework/react/overview).
-
-## State Management
-
-Another common requirement for React applications is state management. There are many options for state management in React. TanStack Store provides a great starting point for your project.
-
-First you need to add TanStack Store as a dependency:
-
-```bash
-pnpm add @tanstack/store
-```
-
-Now let's create a simple counter in the `src/App.tsx` file as a demonstration.
-
-```tsx
-import { useStore } from "@tanstack/react-store";
-import { Store } from "@tanstack/store";
-import "./App.css";
-
-const countStore = new Store(0);
-
-function App() {
-  const count = useStore(countStore);
-  return (
-    <div>
-      <button onClick={() => countStore.setState((n) => n + 1)}>
-        Increment - {count}
-      </button>
-    </div>
-  );
-}
-
-export default App;
-```
-
-One of the many nice features of TanStack Store is the ability to derive state from other state. That derived state will update when the base state updates.
-
-Let's check this out by doubling the count using derived state.
-
-```tsx
-import { useStore } from "@tanstack/react-store";
-import { Store, Derived } from "@tanstack/store";
-import "./App.css";
-
-const countStore = new Store(0);
-
-const doubledStore = new Derived({
-  fn: () => countStore.state * 2,
-  deps: [countStore],
-});
-doubledStore.mount();
-
-function App() {
-  const count = useStore(countStore);
-  const doubledCount = useStore(doubledStore);
-
-  return (
-    <div>
-      <button onClick={() => countStore.setState((n) => n + 1)}>
-        Increment - {count}
-      </button>
-      <div>Doubled - {doubledCount}</div>
-    </div>
-  );
-}
-
-export default App;
-```
-
-We use the `Derived` class to create a new store that is derived from another store. The `Derived` class has a `mount` method that will start the derived store updating.
-
-Once we've created the derived store we can use it in the `App` component just like we would any other store using the `useStore` hook.
-
-You can find out everything you need to know on how to use TanStack Store in the [TanStack Store documentation](https://tanstack.com/store/latest).
-
-# Demo files
-
-Files prefixed with `demo` can be safely deleted. They are there to provide a starting point for you to play around with the features you've installed.
-
-# Learn More
-
-You can learn more about all of the offerings from TanStack in the [TanStack documentation](https://tanstack.com).
+Private
