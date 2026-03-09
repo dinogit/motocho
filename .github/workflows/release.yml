@@ -34,11 +34,17 @@ jobs:
           node-version: lts/*
           cache: 'pnpm'
 
-      - name: Install Rust stable
+      - name: Install Rust stable (macOS universal)
+        if: matrix.platform == 'macos-latest'
         uses: dtolnay/rust-toolchain@stable
         with:
-          # Required for universal macOS builds
-          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+
+      - name: Install Rust stable (Windows)
+        if: matrix.platform == 'windows-latest'
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
 
       - name: Install dependencies (Ubuntu only)
         if: matrix.platform == 'ubuntu-latest'
